@@ -1,0 +1,827 @@
+{
+  "fields": {
+    "Research Type": {
+      "rules": {
+        "Trend Report": [
+          "trend report",
+          "travel trends",
+          "traveler trends",
+          "consumer trends",
+          "future of travel",
+          "year ahead",
+          "what's next",
+          "what’s next",
+          "top trends",
+          "emerging trends"
+        ],
+        "Survey Report": [
+          "survey",
+          "survey report",
+          "respondents",
+          "responses",
+          "sample",
+          "fielded",
+          "online survey",
+          "nationally representative",
+          "questionnaire"
+        ],
+        "Industry Outlook": [
+          "industry outlook",
+          "outlook",
+          "forecast",
+          "future outlook",
+          "market outlook"
+        ],
+        "Market Intelligence Report": [
+          "market intelligence",
+          "market insights",
+          "market report",
+          "industry report",
+          "market analysis",
+          "insights report"
+        ],
+        "State of Play": [
+          "state of play",
+          "european state of play",
+          "current state",
+          "landscape review"
+        ],
+        "Whitepaper": [
+          "whitepaper",
+          "white paper"
+        ],
+        "Academic / Research Study": [
+          "research study",
+          "academic study",
+          "literature review",
+          "review article",
+          "case study"
+        ],
+        "Policy Report": [
+          "policy report",
+          "policy framework",
+          "policy brief",
+          "governance report"
+        ],
+        "Benchmark Report": [
+          "benchmark",
+          "benchmark report",
+          "benchmarking"
+        ],
+        "State of Industry": [
+          "state of the industry",
+          "state of hospitality",
+          "state of corporate travel",
+          "state of tourism"
+        ],
+        "Report": [
+          "report",
+          "insights",
+          "study"
+        ]
+      }
+    },
+    "Main Category": {
+      "rules": {
+        "Traveler Trends": [
+          "travel trends",
+          "traveler trends",
+          "consumer trends",
+          "future of travel",
+          "travel habits",
+          "where to next",
+          "next-level destinations",
+          "next level destinations",
+          "what travelers want",
+          "what travellers want"
+        ],
+        "Distribution & Booking": [
+          "booking",
+          "bookings",
+          "distribution",
+          "reservation",
+          "reservations",
+          "booking window",
+          "channel mix",
+          "direct booking",
+          "search and booking data",
+          "search data",
+          "ota",
+          "online travel agency"
+        ],
+        "Technology & AI": [
+          "artificial intelligence",
+          "ai",
+          "generative ai",
+          "technology",
+          "automation",
+          "digital concierge",
+          "machine learning",
+          "chatbot",
+          "predictive",
+          "tech-enabled"
+        ],
+        "Hospitality / Accommodation": [
+          "hospitality",
+          "accommodation",
+          "hotel",
+          "hotels",
+          "lodging",
+          "room nights",
+          "stays",
+          "guest experience",
+          "rooms",
+          "property"
+        ],
+        "Destination Discovery": [
+          "destination",
+          "destinations",
+          "destination discovery",
+          "destination inspiration",
+          "searched cities",
+          "top destinations",
+          "where to go",
+          "travel inspiration"
+        ],
+        "Policy / Governance": [
+          "policy",
+          "policies",
+          "governance",
+          "framework",
+          "regulation",
+          "regulatory",
+          "public policy",
+          "interreg",
+          "recovery and resilience plan"
+        ],
+        "Mobility & Transport": [
+          "mobility",
+          "transport",
+          "transportation",
+          "aviation",
+          "airline",
+          "airlines",
+          "rail",
+          "train",
+          "flight",
+          "flights",
+          "ferry",
+          "public transport"
+        ],
+        "Sustainability": [
+          "sustainability",
+          "sustainable",
+          "green",
+          "environment",
+          "environmental",
+          "climate",
+          "carbon",
+          "responsible travel",
+          "responsible tourism",
+          "net zero",
+          "degrowth"
+        ],
+        "Market Intelligence": [
+          "market intelligence",
+          "market insights",
+          "industry report",
+          "market report",
+          "market analysis",
+          "occupancy",
+          "revpar",
+          "adr",
+          "demand",
+          "performance"
+        ],
+        "Pricing & Revenue": [
+          "pricing",
+          "revenue",
+          "revpar",
+          "adr",
+          "rate strategy",
+          "yield",
+          "revenue management",
+          "average daily rate"
+        ],
+        "Reputation & Reviews": [
+          "reputation",
+          "reviews",
+          "guest reviews",
+          "ratings",
+          "review score",
+          "sentiment"
+        ],
+        "Content & Social": [
+          "social media",
+          "content",
+          "creator",
+          "influencer",
+          "pop culture",
+          "celebrity",
+          "movie",
+          "show",
+          "viral",
+          "social inspiration"
+        ],
+        "Loyalty": [
+          "loyalty",
+          "member",
+          "members",
+          "loyalty program",
+          "rewards",
+          "retention"
+        ],
+        "Personalization": [
+          "personalization",
+          "personalised",
+          "personalized",
+          "tailored",
+          "customized",
+          "bespoke recommendations"
+        ],
+        "Seasonality": [
+          "seasonality",
+          "seasonal",
+          "peak season",
+          "off season",
+          "shoulder season",
+          "winter travel",
+          "summer travel"
+        ],
+        "Demographics": [
+          "demographics",
+          "demographic",
+          "gen z",
+          "millennials",
+          "baby boomers",
+          "age groups",
+          "consumer segments"
+        ]
+      }
+    },
+    "Additional Category": {
+      "rules": {
+        "Luxury": [
+          "luxury",
+          "premium",
+          "high-end",
+          "high end",
+          "exclusive",
+          "upscale",
+          "elite travel",
+          "luxury stays",
+          "luxury travel"
+        ],
+        "Premium Experiences": [
+          "premium experiences",
+          "premium travel",
+          "vip",
+          "exclusive experiences",
+          "elevated experience",
+          "high-value experience"
+        ],
+        "Wellness": [
+          "wellness",
+          "well-being",
+          "wellbeing",
+          "self-care",
+          "self care",
+          "recharge",
+          "restore",
+          "wellness travel",
+          "healing",
+          "wellness escape"
+        ],
+        "Spa / Retreats": [
+          "spa",
+          "spa break",
+          "retreat",
+          "retreats",
+          "wellness retreat",
+          "thermal",
+          "hot springs"
+        ],
+        "Hiking": [
+          "hiking",
+          "hike",
+          "hiker",
+          "hikers",
+          "trail",
+          "trails",
+          "trek",
+          "trekking",
+          "walking route",
+          "walking trail"
+        ],
+        "Adventure": [
+          "adventure",
+          "outdoor adventure",
+          "cliff diving",
+          "parasailing",
+          "snorkeling",
+          "kayaking",
+          "canoeing",
+          "rafting",
+          "horseback",
+          "zipline",
+          "surfing",
+          "expedition"
+        ],
+        "Nature & Outdoors": [
+          "nature",
+          "outdoors",
+          "outdoor",
+          "national park",
+          "mountains",
+          "forest",
+          "lakes",
+          "wilderness",
+          "natural landscapes"
+        ],
+        "Food & Dining": [
+          "food",
+          "dining",
+          "culinary",
+          "restaurant",
+          "restaurants",
+          "chef-driven",
+          "chef driven",
+          "farm-to-table",
+          "farm to table",
+          "patisserie",
+          "night markets",
+          "local cuisine"
+        ],
+        "Gastronomy / Wine Tourism": [
+          "wine",
+          "vineyard",
+          "winery",
+          "wineries",
+          "gastronomy",
+          "gastronomic",
+          "food tourism",
+          "culinary tourism",
+          "brewery"
+        ],
+        "Culture & Heritage": [
+          "culture",
+          "cultural",
+          "heritage",
+          "historic",
+          "history",
+          "museum",
+          "museums",
+          "unesco",
+          "local traditions"
+        ],
+        "Arts & Design": [
+          "art",
+          "arts",
+          "design",
+          "gallery",
+          "galleries",
+          "creative district",
+          "architecture"
+        ],
+        "Shopping": [
+          "shopping",
+          "retail",
+          "boutiques",
+          "markets",
+          "luxury retail",
+          "shopping district"
+        ],
+        "Nightlife": [
+          "nightlife",
+          "bars",
+          "clubs",
+          "late-night",
+          "late night",
+          "evening entertainment"
+        ],
+        "Local Experiences": [
+          "local experiences",
+          "authentic experiences",
+          "community-based",
+          "community based",
+          "meet locals",
+          "immersive experiences"
+        ],
+        "Digital Detox": [
+          "digital detox",
+          "offline",
+          "unplug",
+          "off the grid",
+          "no wifi",
+          "no-wifi",
+          "disconnect"
+        ],
+        "Slow Tourism": [
+          "slow tourism",
+          "slow travel",
+          "slowness",
+          "slower travel",
+          "take it slow"
+        ],
+        "Eco-Tourism": [
+          "eco-tourism",
+          "ecotourism",
+          "eco tourism",
+          "nature-positive",
+          "nature positive",
+          "low-impact tourism",
+          "low impact tourism"
+        ],
+        "Responsible Tourism": [
+          "responsible tourism",
+          "responsible travel",
+          "ethical tourism",
+          "ethical travel",
+          "community benefit"
+        ],
+        "Family Travel": [
+          "family travel",
+          "families",
+          "family vacation",
+          "family holiday",
+          "parents",
+          "children",
+          "kids",
+          "gen alpha"
+        ],
+        "Solo Travel": [
+          "solo travel",
+          "solo traveler",
+          "solo traveller",
+          "traveling alone",
+          "travelling alone"
+        ],
+        "Group Travel": [
+          "group travel",
+          "group tours",
+          "travel groups",
+          "small group",
+          "shared travel"
+        ],
+        "Business Travel": [
+          "business travel",
+          "corporate travel",
+          "business traveler",
+          "business travellers",
+          "managed travel",
+          "travel and expense"
+        ],
+        "Bleisure": [
+          "bleisure",
+          "blended travel",
+          "business and leisure",
+          "workcation",
+          "extend business trip"
+        ],
+        "Romance / Honeymoon": [
+          "honeymoon",
+          "romantic getaway",
+          "romance travel",
+          "couples travel",
+          "wedding travel"
+        ],
+        "Camping / Glamping": [
+          "camping",
+          "glamping",
+          "campsite",
+          "campground",
+          "outdoor stay"
+        ],
+        "Coastal / Beach": [
+          "beach",
+          "coastal",
+          "seaside",
+          "shoreline",
+          "oceanfront",
+          "island getaway"
+        ],
+        "Cruise / Waterways": [
+          "cruise",
+          "cruises",
+          "river cruise",
+          "waterways",
+          "canal",
+          "boating tourism"
+        ],
+        "Rail Travel": [
+          "rail travel",
+          "rail tourism",
+          "train journey",
+          "train travel",
+          "night train",
+          "interrail"
+        ],
+        "Cycling": [
+          "cycling",
+          "biking",
+          "bike tourism",
+          "cycle route",
+          "cycle tourism",
+          "bicycle travel"
+        ],
+        "Road Trips": [
+          "road trip",
+          "road trips",
+          "drive travel",
+          "self-drive",
+          "self drive"
+        ],
+        "Ski / Snow": [
+          "ski",
+          "skiing",
+          "snow travel",
+          "winter sports",
+          "mountain resort"
+        ],
+        "Wildlife / Safari": [
+          "wildlife",
+          "safari",
+          "animal encounters",
+          "birdwatching",
+          "nature watching"
+        ],
+        "Pilgrimage / Spiritual Travel": [
+          "pilgrimage",
+          "spiritual travel",
+          "faith travel",
+          "religious tourism",
+          "sacred sites"
+        ],
+        "Events / Festivals": [
+          "festival",
+          "festivals",
+          "event travel",
+          "concert tourism",
+          "cultural events"
+        ],
+        "Sports Tourism": [
+          "sports tourism",
+          "sports travel",
+          "game day",
+          "stadium",
+          "tailgate",
+          "athletics travel",
+          "sporting event"
+        ],
+        "Rural Tourism": [
+          "rural tourism",
+          "rural travel",
+          "countryside",
+          "villages",
+          "remote regions",
+          "agritourism"
+        ],
+        "Urban Travel": [
+          "urban travel",
+          "city travel",
+          "urban tourism",
+          "metropolitan travel"
+        ],
+        "City Breaks": [
+          "city break",
+          "city breaks",
+          "weekend city trip",
+          "short city trip"
+        ],
+        "Secondary Cities": [
+          "secondary cities",
+          "second-tier cities",
+          "second tier cities",
+          "lesser-known cities",
+          "lesser known cities"
+        ],
+        "Multi-destination Travel": [
+          "multi-destination",
+          "multi destination",
+          "multi-city",
+          "multi city",
+          "itinerary across"
+        ],
+        "Domestic Travel": [
+          "domestic travel",
+          "travel within the country",
+          "within their own country",
+          "local travel"
+        ],
+        "International Travel": [
+          "international travel",
+          "overseas travel",
+          "cross-border travel",
+          "cross border travel"
+        ]
+      }
+    },
+    "Destination Focus": {
+      "rules": {
+        "Global": [
+          "global",
+          "worldwide",
+          "international"
+        ],
+        "Multi-region": [
+          "europe",
+          "united states",
+          "u.s.",
+          "usa",
+          "canada",
+          "asia pacific",
+          "apac",
+          "latin america",
+          "middle east",
+          "greater china"
+        ],
+        "Europe": [
+          "europe",
+          "european",
+          "eu"
+        ],
+        "US": [
+          "united states",
+          "u.s.",
+          "usa",
+          "american travelers",
+          "american travellers"
+        ],
+        "APAC": [
+          "apac",
+          "asia pacific",
+          "greater china",
+          "southeast asia"
+        ],
+        "Middle East": [
+          "middle east",
+          "gcc",
+          "uae",
+          "dubai",
+          "saudi"
+        ]
+      }
+    },
+    "Traveler Market": {
+      "rules": {
+        "Business Travelers": [
+          "business travel",
+          "corporate travel",
+          "business traveler",
+          "business travelers",
+          "business traveller",
+          "business travellers"
+        ],
+        "Bleisure Travelers": [
+          "bleisure",
+          "business and leisure",
+          "blended travel",
+          "workcation",
+          "extend business trip"
+        ],
+        "Luxury Travelers": [
+          "luxury traveler",
+          "luxury travelers",
+          "luxury traveller",
+          "luxury travellers",
+          "luxury travel",
+          "premium travelers",
+          "premium travellers",
+          "high-end travelers",
+          "high end travelers",
+          "affluent travelers",
+          "affluent travellers"
+        ],
+        "Wellness Travelers": [
+          "wellness traveler",
+          "wellness travelers",
+          "wellness traveller",
+          "wellness travellers",
+          "wellness travel",
+          "wellness retreat",
+          "wellness retreats",
+          "spa traveler",
+          "spa travelers",
+          "spa traveller",
+          "spa travellers",
+          "retreat travelers",
+          "retreat travellers"
+        ],
+        "Adventure Travelers": [
+          "adventure traveler",
+          "adventure travelers",
+          "adventure traveller",
+          "adventure travellers",
+          "adventure travel",
+          "outdoor adventure",
+          "outdoor travelers",
+          "outdoor travellers",
+          "hiking travelers",
+          "hiking travellers",
+          "trekking travelers",
+          "trekking travellers"
+        ],
+        "Family Travelers": [
+          "family travel",
+          "family traveler",
+          "family travelers",
+          "family traveller",
+          "family travellers",
+          "families",
+          "parents",
+          "children",
+          "kids",
+          "gen alpha"
+        ],
+        "Solo Travelers": [
+          "solo travel",
+          "solo traveler",
+          "solo travelers",
+          "solo traveller",
+          "solo travellers",
+          "traveling alone",
+          "travelling alone"
+        ],
+        "Group Travelers": [
+          "group travel",
+          "group traveler",
+          "group travelers",
+          "group traveller",
+          "group travellers",
+          "small group",
+          "travel groups",
+          "group tours"
+        ],
+        "Leisure Travelers": [
+          "leisure travel",
+          "leisure traveler",
+          "leisure travelers",
+          "leisure traveller",
+          "leisure travellers",
+          "vacation",
+          "holiday",
+          "getaway"
+        ]
+      }
+    }
+  },
+  "methodology_keywords": {
+    "positive": [
+      "methodology",
+      "sample",
+      "respondents",
+      "responses",
+      "fielded",
+      "survey",
+      "commissioned",
+      "research was conducted",
+      "online survey",
+      "representative sample",
+      "data sources",
+      "third-party research",
+      "third party research",
+      "interviews",
+      "questionnaire",
+      "desk research",
+      "literature review",
+      "analysis"
+    ],
+    "negative": [
+      "table of contents",
+      "contact us",
+      "learn more",
+      "references"
+    ]
+  },
+  "datapoint_keywords": {
+    "positive": [
+      "%",
+      "percent",
+      "million",
+      "billion",
+      "respondents",
+      "responses",
+      "travelers",
+      "travellers",
+      "spend",
+      "budget",
+      "increase",
+      "decrease",
+      "up from",
+      "down from",
+      "days",
+      "occupancy",
+      "revpar",
+      "adr",
+      "euro",
+      "euros",
+      "$"
+    ],
+    "negative": [
+      "table of contents",
+      "references",
+      "learn more",
+      "contact us"
+    ]
+  }
+}

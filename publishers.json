@@ -1,0 +1,134 @@
+{
+  "publishers": [
+    {
+      "canonical_name": "Amadeus",
+      "aliases": [
+        "amadeus",
+        "amadeus it group"
+      ]
+    },
+    {
+      "canonical_name": "Booking.com",
+      "aliases": [
+        "booking.com"
+      ]
+    },
+    {
+      "canonical_name": "Current Forward",
+      "aliases": [
+        "current forward"
+      ]
+    },
+    {
+      "canonical_name": "Deloitte",
+      "aliases": [
+        "deloitte"
+      ]
+    },
+    {
+      "canonical_name": "Deloitte Center for Technology, Media & Telecommunications",
+      "aliases": [
+        "deloitte center for technology, media & telecommunications"
+      ]
+    },
+    {
+      "canonical_name": "Expedia",
+      "aliases": [
+        "expedia",
+        "expedia group"
+      ]
+    },
+    {
+      "canonical_name": "Google",
+      "aliases": [
+        "google"
+      ]
+    },
+    {
+      "canonical_name": "Interreg Europe",
+      "aliases": [
+        "interreg europe"
+      ]
+    },
+    {
+      "canonical_name": "McKinsey",
+      "aliases": [
+        "mckinsey",
+        "mckinsey & company"
+      ]
+    },
+    {
+      "canonical_name": "Mews",
+      "aliases": [
+        "mews"
+      ]
+    },
+    {
+      "canonical_name": "Navan",
+      "aliases": [
+        "navan"
+      ]
+    },
+    {
+      "canonical_name": "OAG",
+      "aliases": [
+        "oag"
+      ]
+    },
+    {
+      "canonical_name": "Phocuswright",
+      "aliases": [
+        "phocuswright"
+      ]
+    },
+    {
+      "canonical_name": "Priceline",
+      "aliases": [
+        "priceline"
+      ]
+    },
+    {
+      "canonical_name": "Skift",
+      "aliases": [
+        "skift",
+        "skift research"
+      ]
+    },
+    {
+      "canonical_name": "University of Eastern Finland",
+      "aliases": [
+        "university of eastern finland"
+      ]
+    }
+  ],
+  "publisher_detection_hints": {
+    "institution_words": [
+      "university",
+      "institute",
+      "commission",
+      "foundation",
+      "organisation",
+      "organization",
+      "council",
+      "department",
+      "faculty",
+      "centre",
+      "center",
+      "research",
+      "group"
+    ],
+    "negative_words": [
+      "report",
+      "summary",
+      "contents",
+      "highlights",
+      "methodology",
+      "top 10",
+      "year-on-year",
+      "occupancy by",
+      "searched vs. booked",
+      "learn more",
+      "visit our website"
+    ]
+  }
+}
