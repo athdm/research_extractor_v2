@@ -172,6 +172,15 @@ def style_not_specified(df: pd.DataFrame):
     return df.style.map(highlight, subset=["Value"])
 
 
+
+def extract_pasted_article_pages(article_text: str) -> List[Dict[str, Any]]:
+    """Convert manually pasted article text into the same page structure used by URL text."""
+    cleaned = article_text.strip()
+    if not cleaned:
+        raise ValueError("Pasted article text is empty.")
+    return extract_html_pages(cleaned)
+
+
 def main():
     st.set_page_config(page_title=APP_TITLE, layout="wide")
     st.title(APP_TITLE)
@@ -207,10 +216,14 @@ def main():
         st.header("Input")
         uploaded_pdf = st.file_uploader("Upload PDF", type=["pdf"])
         source_url = st.text_input("Or paste a URL (page or direct PDF link)")
+        pasted_article_text = st.text_area(
+            "Or paste article text",
+            height=180,
+            placeholder="Use this when a website blocks automated access. Copy the article text from your browser and paste it here.",
+        )
         run = st.button("Run extraction", use_container_width=True)
 
-      
-
+        st.divider()
         if teable_token and teable_table_id:
             st.success("Teable connection settings detected")
         else:
@@ -219,8 +232,8 @@ def main():
         st.caption("Rule-based extraction still works if Gemini is unavailable.")
 
     if run:
-        if not uploaded_pdf and not source_url:
-            st.warning("Upload a PDF or enter a URL, then click Run extraction.")
+        if not uploaded_pdf and not source_url and not pasted_article_text.strip():
+            st.warning("Upload a PDF, paste article text, or enter a URL, then click Run extraction.")
             st.stop()
 
         pages = []
@@ -231,6 +244,10 @@ def main():
             if uploaded_pdf is not None:
                 pages = extract_pdf_pages(uploaded_pdf)
                 loaded_label = f"Loaded: {uploaded_pdf.name} ({len(pages)} pages)"
+            elif pasted_article_text.strip():
+                pages = extract_pasted_article_pages(pasted_article_text)
+                effective_source_url = source_url.strip()
+                loaded_label = "Loaded: pasted article text"
             else:
                 with st.spinner("Fetching URL..."):
                     fetched = fetch_url(effective_source_url)
@@ -248,6 +265,7 @@ def main():
 
         except FetchBlockedError as e:
             st.error(str(e))
+            st.info("This website blocks automated access. Open the article in your browser, copy the article text, paste it into 'Or paste article text', then run extraction again. You can also save the page as a PDF and upload it.")
             st.stop()
         except FetchParseError as e:
             st.error(str(e))
@@ -275,7 +293,7 @@ def main():
     result = st.session_state.last_extraction_result
 
     if result is None:
-        st.info("Upload a PDF or paste a URL, then click Run extraction.")
+        st.info("Upload a PDF, paste article text, or paste a URL, then click Run extraction.")
         return
 
     effective_source_url = st.session_state.last_effective_source_url
