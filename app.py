@@ -115,6 +115,7 @@ TEABLE_FIELD_MAP = {
 }
 
 OPTIONAL_TEABLE_FIELD_MAP = {
+    "PDF Source": "PDF Source",
     "Source Type": "Source Type",
     "OCR Used": "OCR Used",
     "Gemini Used": "Gemini Used",
@@ -263,7 +264,7 @@ def append_result_to_teable(final_row: Dict[str, Any], source_url: str = "") -> 
         core_fields = {
             k: v
             for k, v in fields.items()
-            if k not in OPTIONAL_TEABLE_FIELD_MAP and k not in {"Source Type", "OCR Used", "Gemini Used", "Confidence Score", "Needs Review Count", "Status", "Source Quality", "Usefulness", "Reviewer Notes"}
+            if k not in OPTIONAL_TEABLE_FIELD_MAP and k not in {"PDF Source", "Source Type", "OCR Used", "Gemini Used", "Confidence Score", "Needs Review Count", "Status", "Source Quality", "Usefulness", "Reviewer Notes"}
         }
         payload["records"][0]["fields"] = core_fields
         response = requests.post(endpoint, json=payload, headers=_teable_headers(), timeout=30)
@@ -442,6 +443,12 @@ def render_editable_review(row: Dict[str, Any], metadata: Dict[str, Any]) -> Dic
     with m3:
         edited["Source Type"] = st.text_input("Source Type", value=str(metadata.get("Source Type", "")))
 
+    edited["PDF Source"] = st.text_input(
+        "PDF Source",
+        value=str(metadata.get("PDF Source", "")),
+        help="Uploaded PDF filename or direct PDF URL. This is saved separately in Teable when the field exists.",
+    )
+
     edited["Usefulness"] = st.text_area(
         "Usefulness",
         value=str(metadata.get("Usefulness", "")),
@@ -477,6 +484,7 @@ def main():
         "last_effective_source_url": "",
         "last_loaded_label": "",
         "last_source_type": "",
+        "last_pdf_source": "",
         "last_sent_teable_record_id": "",
         "send_anyway_duplicate": False,
     }.items():
@@ -523,17 +531,20 @@ def main():
         loaded_label = ""
         effective_source_url = source_url.strip()
         source_type = ""
+        pdf_source = ""
 
         try:
             if uploaded_pdf is not None:
                 with st.spinner("Reading PDF..."):
                     pages = extract_pdf_pages(uploaded_pdf)
                 source_type = "PDF upload"
+                pdf_source = uploaded_pdf.name
                 loaded_label = f"Loaded: {uploaded_pdf.name} ({len(pages)} pages)"
             elif pasted_article_text.strip():
                 pages = extract_pasted_article_pages(pasted_article_text)
                 effective_source_url = source_url.strip()
                 source_type = "Pasted article text"
+                pdf_source = ""
                 loaded_label = "Loaded: pasted article text"
             else:
                 with st.spinner("Fetching URL..."):
@@ -544,10 +555,12 @@ def main():
                 if fetched["type"] == "pdf":
                     pages = extract_pdf_pages(fetched["content"])
                     source_type = "URL PDF"
+                    pdf_source = effective_source_url
                     loaded_label = f"Loaded: {effective_source_url} ({len(pages)} pages)"
                 else:
                     pages = extract_html_pages(fetched["content"])
                     source_type = "URL web page"
+                    pdf_source = ""
                     loaded_label = f"Loaded: {effective_source_url} (web page)"
 
             st.info(loaded_label)
@@ -581,6 +594,7 @@ def main():
         st.session_state.last_effective_source_url = effective_source_url
         st.session_state.last_loaded_label = loaded_label
         st.session_state.last_source_type = source_type
+        st.session_state.last_pdf_source = pdf_source
         st.session_state.last_sent_teable_record_id = ""
         st.session_state.send_anyway_duplicate = False
 
@@ -593,6 +607,7 @@ def main():
     effective_source_url = st.session_state.last_effective_source_url
     loaded_label = st.session_state.last_loaded_label
     source_type = st.session_state.last_source_type
+    pdf_source = st.session_state.last_pdf_source
     row = result.final_row
     review_meta = result.review_meta
 
@@ -613,6 +628,7 @@ def main():
     quality_default = compute_source_quality(row, avg_conf)
 
     metadata = {
+        "PDF Source": pdf_source,
         "Source Type": source_type,
         "OCR Used": ocr_used,
         "Gemini Used": bool(result.llm_used),
@@ -735,6 +751,7 @@ def main():
             "teable_token_loaded": bool(teable_token),
             "teable_table_id_loaded": bool(teable_table_id),
             "source_type": source_type,
+            "pdf_source": pdf_source,
             "ocr_used": ocr_used,
             "llm_used": result.llm_used,
             "llm_model_used": result.llm_model_used,
@@ -747,3 +764,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
