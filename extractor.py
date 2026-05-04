@@ -1,4 +1,6 @@
 import os
+import base64
+import io
 import re
 import json
 import time
@@ -118,6 +120,18 @@ CRM_RESEARCH_TYPE_OPTIONS = [
     "Case Study",
 ]
 
+CRM_TRAVELER_SEGMENT_OPTIONS = [
+    "Business Travelers",
+    "Bleisure Travelers",
+    "Luxury Travelers",
+    "Wellness Travelers",
+    "Adventure Travelers",
+    "Family Travelers",
+    "Solo Travelers",
+    "Group Travelers",
+    "Leisure Travelers",
+]
+
 BASE_DIR = Path(__file__).resolve().parent
 TAXONOMY_PATH = BASE_DIR / "taxonomy.json"
 PUBLISHERS_PATH = BASE_DIR / "publishers.json"
@@ -185,6 +199,10 @@ MONTH_PAT = re.compile(
 SEASON_PAT = re.compile(r"\b(Spring|Summer|Autumn|Fall|Winter)\s+20\d{2}\b", re.I)
 YEAR_PAT = re.compile(r"\b20\d{2}\b")
 URL_PAT = re.compile(r"https?://\S+|www\.\S+", re.I)
+
+OCR_MIN_TEXT_CHARS_PER_PAGE = 80
+OCR_DEFAULT_MAX_PAGES = 12
+OCR_RENDER_DPI = 160
 
 NUMERIC_PAT = re.compile(
     r"("
@@ -694,6 +712,75 @@ def fetch_url(url: str) -> Dict[str, Any]:
 # Parsing
 # =========================================================
 
+def _gemini_vision_extract_page_text(image_png: bytes, page_no: int, model: str, fallback_model: str) -> str:
+    """
+    Extract visible text from a rendered PDF page image using Gemini vision through
+    the OpenAI-compatible Gemini endpoint.
+
+    This is used only as a fallback for scanned/image-based PDFs where PyMuPDF
+    cannot extract a usable text layer.
+    """
+    client = get_gemini_client()
+    if client is None:
+        return ""
+
+    image_b64 = base64.b64encode(image_png).decode("utf-8")
+    prompt = (
+        "Extract all readable text from this PDF page image. "
+        "Preserve headings, bullet points, statistics, dates, names, and URLs when visible. "
+        "Return plain text only. Do not summarize. "
+        f"This is page {page_no}."
+    )
+
+    models_to_try = [model]
+    if fallback_model and fallback_model != model:
+        models_to_try.append(fallback_model)
+
+    last_err = None
+    for chosen_model in models_to_try:
+        try:
+            response = client.chat.completions.create(
+                model=chosen_model,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/png;base64,{image_b64}"
+                                },
+                            },
+                        ],
+                    }
+                ],
+                temperature=0,
+            )
+            return clean_text(response.choices[0].message.content or "")
+        except Exception as e:
+            last_err = e
+            continue
+
+    return ""
+
+
+def _render_pdf_page_to_png(page: Any, dpi: int = OCR_RENDER_DPI) -> bytes:
+    zoom = dpi / 72
+    matrix = fitz.Matrix(zoom, zoom)
+    pix = page.get_pixmap(matrix=matrix, alpha=False)
+    return pix.tobytes("png")
+
+
+def _ocr_page_limit() -> int:
+    raw = os.getenv("OCR_MAX_PAGES", str(OCR_DEFAULT_MAX_PAGES)).strip()
+    try:
+        value = int(raw)
+        return max(1, min(value, 30))
+    except Exception:
+        return OCR_DEFAULT_MAX_PAGES
+
+
 def extract_pdf_pages(pdf_input) -> List[Dict[str, Any]]:
     if fitz is None:
         raise RuntimeError("PyMuPDF is not installed. Run: pip install pymupdf")
@@ -718,8 +805,49 @@ def extract_pdf_pages(pdf_input) -> List[Dict[str, Any]]:
                     lines.append({"text": text, "size": max_size, "bold": bold})
             plain = page.get_text("text", sort=True)
             pages.append({"page": i + 1, "lines": lines, "text": plain})
-    return pages
 
+        total_text_chars = sum(len(clean_text(p.get("text", ""))) for p in pages)
+        avg_text_chars = total_text_chars / max(1, len(pages))
+
+        # If the PDF has a usable embedded text layer, keep the cheap/fast path.
+        if total_text_chars >= 400 or avg_text_chars >= OCR_MIN_TEXT_CHARS_PER_PAGE:
+            return pages
+
+        # Fallback: image/scanned/screenshot PDF. Use Gemini vision if API key exists.
+        client = get_gemini_client()
+        if client is None:
+            raise RuntimeError(
+                "This PDF appears to be image-based/scanned and no selectable text could be extracted. "
+                "Add GEMINI_API_KEY to enable OCR/vision fallback, or paste the article text manually."
+            )
+
+        model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite").strip() or "gemini-2.5-flash-lite"
+        fallback_model = os.getenv("GEMINI_FALLBACK_MODEL", "gemini-2.5-flash").strip() or "gemini-2.5-flash"
+        max_pages = min(len(doc), _ocr_page_limit())
+
+        ocr_pages: List[Dict[str, Any]] = []
+        for i in range(max_pages):
+            page = doc[i]
+            image_png = _render_pdf_page_to_png(page)
+            page_text = _gemini_vision_extract_page_text(
+                image_png=image_png,
+                page_no=i + 1,
+                model=model,
+                fallback_model=fallback_model,
+            )
+            lines = [
+                {"text": clean_text(x), "size": 12, "bold": False}
+                for x in page_text.splitlines()
+                if clean_text(x)
+            ]
+            ocr_pages.append({"page": i + 1, "lines": lines, "text": page_text})
+
+        if not any(clean_text(p.get("text", "")) for p in ocr_pages):
+            raise RuntimeError(
+                "This PDF appears to be image-based/scanned, but OCR/vision extraction did not return readable text."
+            )
+
+        return ocr_pages
 
 def extract_html_pages(text: str) -> List[Dict[str, Any]]:
     lines = [{"text": clean_text(x), "size": 12, "bold": False} for x in text.splitlines() if clean_text(x)]
@@ -1293,26 +1421,24 @@ def classify_traveler_market(text: str) -> Tuple[str, str, int]:
         return "Not specified", "No clear traveler segment found", 60
 
     ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-
-    selected = []
     top_score = ranked[0][1]
 
+    selected = []
     for label, score in ranked:
-        # Keep multiple traveler segments if they are mentioned.
-        # Include weaker segments only if they have at least one clear hit.
-        if score >= 1 and score >= max(1, top_score - 2):
+        # Return every traveler segment that has a clear rule/taxonomy hit.
+        # No top-score cutoff and no four-item cap.
+        if score >= 1:
             selected.append(label)
 
-        if len(selected) >= 4:
-            break
+    selected = _dedupe_keep_order(selected, CRM_TRAVELER_SEGMENT_OPTIONS)
 
     evidence = []
     for label in selected:
-        evidence.extend(hits_map.get(label, [])[:2])
+        evidence.extend(hits_map.get(label, [])[:3])
 
     confidence = min(94, 72 + top_score * 6)
 
-    return "; ".join(selected), "; ".join(evidence[:8]), confidence
+    return "; ".join(selected), "; ".join(evidence[:20]), confidence
 
 def extract_ethnicity_focus(pages: List[Dict[str, Any]]) -> Tuple[str, str, Optional[int], int]:
     found: List[str] = []
@@ -1774,29 +1900,33 @@ def apply_crm_validation_result(row: Dict[str, str], reviews: Dict[str, FieldRev
     allowed_map = {
         "CATEGORY": CRM_CATEGORY_OPTIONS,
         "DESTINATION_FOCUS": CRM_DESTINATION_FOCUS_OPTIONS,
+        "TRAVELER_MARKET": CRM_TRAVELER_SEGMENT_OPTIONS,
         "RESEARCH_TYPE": CRM_RESEARCH_TYPE_OPTIONS,
     }
     for field, allowed in allowed_map.items():
         value = clean_text(validation.get(field, "")) if isinstance(validation, dict) else ""
         if not value:
             continue
-        if field in {"CATEGORY"}:
+
+        # Multi-value fields may be semicolon-separated.
+        if field in {"CATEGORY", "TRAVELER_MARKET"}:
             selected = _dedupe_keep_order(_split_labels(value), allowed)
             if selected:
                 row[field] = "; ".join(selected)
                 conf = int(confidence.get(field, 90)) if isinstance(confidence, dict) else 90
-                reviews[field] = FieldReview(row[field], min(96, max(75, conf)), "Gemini CRM cross-check", None, "rule+gemini", conf < 85)
+                reviews[field] = FieldReview(row[field], min(96, max(75, conf)), "Rule + Gemini cross-check", None, "rule+gemini", conf < 85)
         else:
             if value in allowed:
                 row[field] = value
                 conf = int(confidence.get(field, 90)) if isinstance(confidence, dict) else 90
-                reviews[field] = FieldReview(row[field], min(96, max(75, conf)), "Gemini CRM cross-check", None, "rule+gemini", conf < 85)
+                reviews[field] = FieldReview(row[field], min(96, max(75, conf)), "Rule + Gemini cross-check", None, "rule+gemini", conf < 85)
+
     for field in ["Title", "Publisher", "Date"]:
         value = clean_text(corrections.get(field, "")) if isinstance(corrections, dict) else ""
         if value and value.lower() != "not specified":
             conf = int(confidence.get(field, 88)) if isinstance(confidence, dict) else 88
             row[field] = value
-            reviews[field] = FieldReview(value, min(96, max(75, conf)), "Gemini CRM cross-check correction", reviews.get(field, FieldReview()).evidence_page, "rule+gemini", conf < 85)
+            reviews[field] = FieldReview(value, min(96, max(75, conf)), "Gemini cross-check correction", reviews.get(field, FieldReview()).evidence_page, "rule+gemini", conf < 85)
 
 
 
@@ -1929,6 +2059,7 @@ def _crm_validation_schema() -> Dict[str, Any]:
         "properties": {
             "CATEGORY": {"type": "string"},
             "DESTINATION_FOCUS": {"type": "string"},
+            "TRAVELER_MARKET": {"type": "string"},
             "RESEARCH_TYPE": {"type": "string"},
             "corrections": {
                 "type": "object",
@@ -1945,16 +2076,17 @@ def _crm_validation_schema() -> Dict[str, Any]:
                 "properties": {
                     "CATEGORY": {"type": "integer"},
                     "DESTINATION_FOCUS": {"type": "integer"},
+                    "TRAVELER_MARKET": {"type": "integer"},
                     "RESEARCH_TYPE": {"type": "integer"},
                     "Title": {"type": "integer"},
                     "Publisher": {"type": "integer"},
                     "Date": {"type": "integer"},
                 },
-                "required": ["CATEGORY", "DESTINATION_FOCUS", "RESEARCH_TYPE", "Title", "Publisher", "Date"],
+                "required": ["CATEGORY", "DESTINATION_FOCUS", "TRAVELER_MARKET", "RESEARCH_TYPE", "Title", "Publisher", "Date"],
                 "additionalProperties": False,
             },
         },
-        "required": ["CATEGORY", "DESTINATION_FOCUS", "RESEARCH_TYPE", "corrections", "confidence"],
+        "required": ["CATEGORY", "DESTINATION_FOCUS", "TRAVELER_MARKET", "RESEARCH_TYPE", "corrections", "confidence"],
         "additionalProperties": False,
     }
 
@@ -1968,13 +2100,18 @@ def llm_crosscheck_crm_fields(client: Any, model: str, fallback_model: str, page
         f"{CRM_CATEGORY_OPTIONS}\\n\\n"
         "Allowed DESTINATION_FOCUS values, choose one:\\n"
         f"{CRM_DESTINATION_FOCUS_OPTIONS}\\n\\n"
+        "Allowed TRAVELER_MARKET values, semicolon-separated if multiple traveler segments truly apply:\\n"
+        f"{CRM_TRAVELER_SEGMENT_OPTIONS}\\n\\n"
         "Allowed RESEARCH_TYPE values, choose one:\\n"
         f"{CRM_RESEARCH_TYPE_OPTIONS}\\n\\n"
         "Rules:\\n"
         "- Use only the document excerpts and draft extraction.\\n"
         "- CATEGORY is the research topic/theme, not every incidental word.\\n"
         "- DESTINATION_FOCUS is the destination/region being analyzed.\\n"
-        "- Do not change TRAVELER_MARKET; it is handled by the app's traveler-segment rules.\\n"
+        "- TRAVELER_MARKET means traveler segment/type, e.g. Luxury Travelers, Wellness Travelers, Adventure Travelers, Family Travelers, Business Travelers.\\n"
+        "- TRAVELER_MARKET is NOT source country or nationality; do not return values like Germany, France, UK, USA.\\n"
+        "- Keep all clearly mentioned traveler segments; do not limit to one.\\n"
+        "- If no traveler segment is clear, return the draft value or Not specified.\\n"
         "- corrections.Title, corrections.Publisher and corrections.Date should be corrected only if clearly wrong; otherwise return the draft value.\\n"
         "- Confidence values must be 0-100 integers.\\n\\n"
         f"Draft extraction:\\n{draft_json}\\n\\n"
