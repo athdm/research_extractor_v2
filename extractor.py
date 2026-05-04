@@ -804,7 +804,7 @@ def extract_pdf_pages(pdf_input) -> List[Dict[str, Any]]:
                     bold = any("bold" in (span.get("font", "").lower()) for span in spans)
                     lines.append({"text": text, "size": max_size, "bold": bold})
             plain = page.get_text("text", sort=True)
-            pages.append({"page": i + 1, "lines": lines, "text": plain})
+            pages.append({"page": i + 1, "lines": lines, "text": plain, "ocr_used": False})
 
         total_text_chars = sum(len(clean_text(p.get("text", ""))) for p in pages)
         avg_text_chars = total_text_chars / max(1, len(pages))
@@ -840,7 +840,7 @@ def extract_pdf_pages(pdf_input) -> List[Dict[str, Any]]:
                 for x in page_text.splitlines()
                 if clean_text(x)
             ]
-            ocr_pages.append({"page": i + 1, "lines": lines, "text": page_text})
+            ocr_pages.append({"page": i + 1, "lines": lines, "text": page_text, "ocr_used": True})
 
         if not any(clean_text(p.get("text", "")) for p in ocr_pages):
             raise RuntimeError(
@@ -2266,6 +2266,8 @@ def build_output(pages: List[Dict[str, Any]], source_url: str = "", pdf_path: st
         "used": False,
         "page_roles": role_scores,
         "legacy_extraction": legacy,
+        "ocr_used": any(bool(p.get("ocr_used")) for p in pages),
+        "ocr_pages": [p.get("page") for p in pages if p.get("ocr_used")],
         "calls": [],
     }
     llm_model_used = ""
