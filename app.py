@@ -44,6 +44,14 @@ CATEGORY_OPTIONS = [
     "Adventure",
     "Destination competitiveness",
     "Visitor experience",
+    "Transportation",
+    "Accommodation",
+    "Experiences",
+    "Food & Beverage",
+    "Travel Planning & Booking",
+    "Destinations / DMOs",
+    "MICE & Business Travel",
+    "Special Interest Tourism",
 ]
 
 DESTINATION_FOCUS_OPTIONS = [
@@ -115,7 +123,10 @@ TEABLE_FIELD_MAP = {
 }
 
 OPTIONAL_TEABLE_FIELD_MAP = {
-    "PDF Source": "PDF Source",
+    "Ethnicity Focus": "Ethnicity Focus",
+    "Digital Marketing Insight": "Digital Marketing Insight",
+    "PDF Source URL": "PDF Source URL",
+    "PDF File Name": "PDF File Name",
     "Source Type": "Source Type",
     "OCR Used": "OCR Used",
     "Gemini Used": "Gemini Used",
@@ -264,7 +275,7 @@ def append_result_to_teable(final_row: Dict[str, Any], source_url: str = "") -> 
         core_fields = {
             k: v
             for k, v in fields.items()
-            if k not in OPTIONAL_TEABLE_FIELD_MAP and k not in {"PDF Source", "Source Type", "OCR Used", "Gemini Used", "Confidence Score", "Needs Review Count", "Status", "Source Quality", "Usefulness", "Reviewer Notes"}
+            if k not in OPTIONAL_TEABLE_FIELD_MAP and k not in {"Ethnicity Focus", "Digital Marketing Insight", "PDF Source URL", "PDF File Name", "Source Type", "OCR Used", "Gemini Used", "Confidence Score", "Needs Review Count", "Status", "Source Quality", "Usefulness", "Reviewer Notes"}
         }
         payload["records"][0]["fields"] = core_fields
         response = requests.post(endpoint, json=payload, headers=_teable_headers(), timeout=30)
@@ -421,10 +432,22 @@ def render_editable_review(row: Dict[str, Any], metadata: Dict[str, Any]) -> Dic
         st.multiselect("TRAVELER_MARKET", TRAVELER_MARKET_OPTIONS, default=default_travelers)
     )
 
+    edited["Ethnicity Focus"] = st.text_input(
+        "Ethnicity Focus",
+        value=str(row.get("Ethnicity Focus", "")),
+        help="Ethnicity, nationality, demographic, or source-market focus if the source explicitly mentions one.",
+    )
+
     edited["Sample"] = st.text_area("Sample", value=str(row.get("Sample", "")), height=90)
     edited["Methodology"] = st.text_area("Methodology", value=str(row.get("Methodology", "")), height=120)
     edited["Data Points"] = st.text_area("Data Points", value=str(row.get("Data Points", "")), height=170)
     edited["Conclusion"] = st.text_area("Conclusion", value=str(row.get("Conclusion", "")), height=130)
+    edited["Digital Marketing Insight"] = st.text_area(
+        "Digital Marketing Insight",
+        value=str(row.get("Digital Marketing Insight", "")),
+        height=120,
+        placeholder="Useful input, advice, campaign idea, content/social/SEO hint, or practical marketing hack from the source.",
+    )
 
     st.subheader("Workflow metadata")
     m1, m2, m3 = st.columns(3)
@@ -443,10 +466,15 @@ def render_editable_review(row: Dict[str, Any], metadata: Dict[str, Any]) -> Dic
     with m3:
         edited["Source Type"] = st.text_input("Source Type", value=str(metadata.get("Source Type", "")))
 
-    edited["PDF Source"] = st.text_input(
-        "PDF Source",
-        value=str(metadata.get("PDF Source", "")),
-        help="Uploaded PDF filename or direct PDF URL. This is saved separately in Teable when the field exists.",
+    edited["PDF Source URL"] = st.text_input(
+        "PDF Source URL",
+        value=str(metadata.get("PDF Source URL", "")),
+        help="Clickable source URL for the PDF/article. In Teable, create this as a URL field.",
+    )
+    edited["PDF File Name"] = st.text_input(
+        "PDF File Name",
+        value=str(metadata.get("PDF File Name", "")),
+        help="Uploaded local PDF filename. This is not clickable unless the file also has a public URL.",
     )
 
     edited["Usefulness"] = st.text_area(
@@ -484,7 +512,8 @@ def main():
         "last_effective_source_url": "",
         "last_loaded_label": "",
         "last_source_type": "",
-        "last_pdf_source": "",
+        "last_pdf_source_url": "",
+        "last_pdf_file_name": "",
         "last_sent_teable_record_id": "",
         "send_anyway_duplicate": False,
     }.items():
@@ -531,20 +560,23 @@ def main():
         loaded_label = ""
         effective_source_url = source_url.strip()
         source_type = ""
-        pdf_source = ""
+        pdf_source_url = ""
+        pdf_file_name = ""
 
         try:
             if uploaded_pdf is not None:
                 with st.spinner("Reading PDF..."):
                     pages = extract_pdf_pages(uploaded_pdf)
                 source_type = "PDF upload"
-                pdf_source = uploaded_pdf.name
+                pdf_file_name = uploaded_pdf.name
+                pdf_source_url = source_url.strip()
                 loaded_label = f"Loaded: {uploaded_pdf.name} ({len(pages)} pages)"
             elif pasted_article_text.strip():
                 pages = extract_pasted_article_pages(pasted_article_text)
                 effective_source_url = source_url.strip()
                 source_type = "Pasted article text"
-                pdf_source = ""
+                pdf_source_url = ""
+                pdf_file_name = ""
                 loaded_label = "Loaded: pasted article text"
             else:
                 with st.spinner("Fetching URL..."):
@@ -555,12 +587,14 @@ def main():
                 if fetched["type"] == "pdf":
                     pages = extract_pdf_pages(fetched["content"])
                     source_type = "URL PDF"
-                    pdf_source = effective_source_url
+                    pdf_source_url = effective_source_url
+                    pdf_file_name = ""
                     loaded_label = f"Loaded: {effective_source_url} ({len(pages)} pages)"
                 else:
                     pages = extract_html_pages(fetched["content"])
                     source_type = "URL web page"
-                    pdf_source = ""
+                    pdf_source_url = ""
+                    pdf_file_name = ""
                     loaded_label = f"Loaded: {effective_source_url} (web page)"
 
             st.info(loaded_label)
@@ -594,7 +628,8 @@ def main():
         st.session_state.last_effective_source_url = effective_source_url
         st.session_state.last_loaded_label = loaded_label
         st.session_state.last_source_type = source_type
-        st.session_state.last_pdf_source = pdf_source
+        st.session_state.last_pdf_source_url = pdf_source_url
+        st.session_state.last_pdf_file_name = pdf_file_name
         st.session_state.last_sent_teable_record_id = ""
         st.session_state.send_anyway_duplicate = False
 
@@ -607,7 +642,8 @@ def main():
     effective_source_url = st.session_state.last_effective_source_url
     loaded_label = st.session_state.last_loaded_label
     source_type = st.session_state.last_source_type
-    pdf_source = st.session_state.last_pdf_source
+    pdf_source_url = st.session_state.last_pdf_source_url
+    pdf_file_name = st.session_state.last_pdf_file_name
     row = result.final_row
     review_meta = result.review_meta
 
@@ -628,7 +664,8 @@ def main():
     quality_default = compute_source_quality(row, avg_conf)
 
     metadata = {
-        "PDF Source": pdf_source,
+        "PDF Source URL": pdf_source_url,
+        "PDF File Name": pdf_file_name,
         "Source Type": source_type,
         "OCR Used": ocr_used,
         "Gemini Used": bool(result.llm_used),
@@ -751,7 +788,8 @@ def main():
             "teable_token_loaded": bool(teable_token),
             "teable_table_id_loaded": bool(teable_table_id),
             "source_type": source_type,
-            "pdf_source": pdf_source,
+            "pdf_source_url": pdf_source_url,
+            "pdf_file_name": pdf_file_name,
             "ocr_used": ocr_used,
             "llm_used": result.llm_used,
             "llm_model_used": result.llm_model_used,
@@ -764,4 +802,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

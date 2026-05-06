@@ -49,12 +49,14 @@ DISPLAY_COLUMNS = [
     "Date",
     "CATEGORY",
     "DESTINATION_FOCUS",
+    "Ethnicity Focus",
     "TRAVELER_MARKET",
     "RESEARCH_TYPE",
     "Sample",
     "Methodology",
     "Data Points",
     "Conclusion",
+    "Digital Marketing Insight",
 ]
 
 FIELDS = DISPLAY_COLUMNS.copy()
@@ -76,6 +78,14 @@ CRM_CATEGORY_OPTIONS = [
     "Adventure",
     "Destination competitiveness",
     "Visitor experience",
+    "Transportation",
+    "Accommodation",
+    "Experiences",
+    "Food & Beverage",
+    "Travel Planning & Booking",
+    "Destinations / DMOs",
+    "MICE & Business Travel",
+    "Special Interest Tourism",
 ]
 
 CRM_DESTINATION_FOCUS_OPTIONS = [
@@ -1784,6 +1794,14 @@ def normalize_crm_category(old_category: str, title: str, text: str) -> Tuple[st
         "Adventure": ["adventure", "hiking", "outdoor", "nature & outdoors", "trekking", "trail", "trails", "snorkeling", "kayaking", "cycling", "ski", "wildlife", "safari"],
         "Destination competitiveness": ["destination competitiveness", "competitiveness", "destination development", "destination management", "regional development", "policy", "governance", "framework", "public policy", "interreg", "tourism strategy", "market development"],
         "Visitor experience": ["visitor experience", "guest experience", "experience design", "experiences", "authentic experiences", "local experiences", "immersive experiences", "personalization", "personalisation", "satisfaction", "quality experiences"],
+        "Transportation": ["transportation", "transport", "mobility", "aviation", "airline", "airlines", "airport", "rail", "train", "cruise", "car rental", "ride-hailing", "transfer", "transfers"],
+        "Accommodation": ["accommodation", "hotel", "hotels", "hospitality", "lodging", "resort", "resorts", "short-term rental", "vacation rental", "airbnb", "hostel", "serviced apartment"],
+        "Experiences": ["experience", "experiences", "tours", "activities", "attractions", "sightseeing", "local tours", "guided tour", "things to do", "immersive", "unique experiences"],
+        "Food & Beverage": ["food & beverage", "food and beverage", "f&b", "restaurants", "restaurant", "dining", "culinary", "gastronomy", "beverage", "bar", "bars", "wine", "local cuisine"],
+        "Travel Planning & Booking": ["travel planning", "booking", "bookings", "reservation", "itinerary", "trip planning", "planning process", "booking journey", "booking behavior", "booking behaviour", "mobile booking", "online booking", "ota"],
+        "Destinations / DMOs": ["dmo", "dmos", "destination marketing organization", "destination marketing organisation", "destination management organization", "destination management organisation", "tourism board", "destination brand", "destination marketing", "destination strategy"],
+        "MICE & Business Travel": ["mice", "meetings", "incentives", "conferences", "exhibitions", "events", "business travel", "corporate travel", "trade show", "convention", "conference tourism", "event travel"],
+        "Special Interest Tourism": ["special interest tourism", "niche tourism", "religious tourism", "cultural tourism", "heritage tourism", "sports tourism", "medical tourism", "wellness tourism", "eco tourism", "adventure tourism", "film tourism", "education tourism"],
     }
 
     scores: Dict[str, int] = {}
@@ -1921,6 +1939,13 @@ def apply_crm_validation_result(row: Dict[str, str], reviews: Dict[str, FieldRev
                 conf = int(confidence.get(field, 90)) if isinstance(confidence, dict) else 90
                 reviews[field] = FieldReview(row[field], min(96, max(75, conf)), "Rule + Gemini cross-check", None, "rule+gemini", conf < 85)
 
+    for field in ["Ethnicity Focus", "Digital Marketing Insight"]:
+        value = clean_text(validation.get(field, "")) if isinstance(validation, dict) else ""
+        if value:
+            conf = int(confidence.get(field, 86)) if isinstance(confidence, dict) else 86
+            row[field] = value
+            reviews[field] = FieldReview(value, min(94, max(70, conf)), "Rule + Gemini cross-check", None, "rule+gemini", conf < 85)
+
     for field in ["Title", "Publisher", "Date"]:
         value = clean_text(corrections.get(field, "")) if isinstance(corrections, dict) else ""
         if value and value.lower() != "not specified":
@@ -1928,6 +1953,54 @@ def apply_crm_validation_result(row: Dict[str, str], reviews: Dict[str, FieldRev
             row[field] = value
             reviews[field] = FieldReview(value, min(96, max(75, conf)), "Gemini cross-check correction", reviews.get(field, FieldReview()).evidence_page, "rule+gemini", conf < 85)
 
+
+
+def extract_digital_marketing_insight_rule(text: str) -> Tuple[str, str, int]:
+    """Find actionable digital-marketing inputs/hacks/advice in the source."""
+    cleaned = normalize_block(text)
+    sentences = [clean_text(s) for s in re.split(r"(?<=[.!?])\s+", cleaned) if clean_text(s)]
+
+    marketing_terms = [
+        "digital marketing", "marketing", "campaign", "content", "social media", "seo", "search", "paid media", "ads", "advertising",
+        "influencer", "creator", "tiktok", "instagram", "facebook", "youtube", "email", "newsletter", "website", "conversion",
+        "personalization", "personalisation", "reviews", "ugc", "user-generated", "brand", "storytelling", "mobile", "app",
+        "booking journey", "customer journey", "inspiration", "discoverability", "visibility", "audience", "segment",
+    ]
+    action_terms = [
+        "should", "need to", "must", "opportunity", "recommend", "focus", "prioritize", "prioritise", "leverage", "use", "create", "offer", "promote", "target", "highlight", "optimize", "optimise", "improve", "invest", "build",
+    ]
+
+    candidates: List[str] = []
+    evidence = ""
+    for s in sentences:
+        low = s.lower()
+        if len(s) < 35 or len(s) > 320:
+            continue
+        if _is_toc_line(s) or URL_PAT.search(s):
+            continue
+        if any(t in low for t in marketing_terms) and any(t in low for t in action_terms):
+            candidates.append(s)
+            if not evidence:
+                evidence = s
+        elif any(t in low for t in ["social media", "content", "influencer", "creator", "reviews", "ugc", "seo", "advertising", "campaign"]):
+            candidates.append(s)
+            if not evidence:
+                evidence = s
+
+    if not candidates:
+        return "Not specified", "No explicit digital marketing input found", 65
+
+    selected = []
+    seen = set()
+    for c in candidates:
+        key = c[:80].lower()
+        if key not in seen:
+            seen.add(key)
+            selected.append(c)
+        if len(selected) >= 3:
+            break
+
+    return " • ".join(selected), evidence, 78
 
 
 # =========================================================
@@ -1963,8 +2036,9 @@ def _multi_field_schema() -> Dict[str, Any]:
             "methodology": {"type": "string"},
             "data_points": {"type": "array", "items": {"type": "string"}},
             "conclusion": {"type": "string"},
+            "digital_marketing_insight": {"type": "string"},
         },
-        "required": ["sample", "methodology", "data_points", "conclusion"],
+        "required": ["sample", "methodology", "data_points", "conclusion", "digital_marketing_insight"],
         "additionalProperties": False,
     }
 
@@ -2060,7 +2134,9 @@ def _crm_validation_schema() -> Dict[str, Any]:
             "CATEGORY": {"type": "string"},
             "DESTINATION_FOCUS": {"type": "string"},
             "TRAVELER_MARKET": {"type": "string"},
+            "Ethnicity Focus": {"type": "string"},
             "RESEARCH_TYPE": {"type": "string"},
+            "Digital Marketing Insight": {"type": "string"},
             "corrections": {
                 "type": "object",
                 "properties": {
@@ -2077,16 +2153,18 @@ def _crm_validation_schema() -> Dict[str, Any]:
                     "CATEGORY": {"type": "integer"},
                     "DESTINATION_FOCUS": {"type": "integer"},
                     "TRAVELER_MARKET": {"type": "integer"},
+                    "Ethnicity Focus": {"type": "integer"},
                     "RESEARCH_TYPE": {"type": "integer"},
+                    "Digital Marketing Insight": {"type": "integer"},
                     "Title": {"type": "integer"},
                     "Publisher": {"type": "integer"},
                     "Date": {"type": "integer"},
                 },
-                "required": ["CATEGORY", "DESTINATION_FOCUS", "TRAVELER_MARKET", "RESEARCH_TYPE", "Title", "Publisher", "Date"],
+                "required": ["CATEGORY", "DESTINATION_FOCUS", "TRAVELER_MARKET", "Ethnicity Focus", "RESEARCH_TYPE", "Digital Marketing Insight", "Title", "Publisher", "Date"],
                 "additionalProperties": False,
             },
         },
-        "required": ["CATEGORY", "DESTINATION_FOCUS", "TRAVELER_MARKET", "RESEARCH_TYPE", "corrections", "confidence"],
+        "required": ["CATEGORY", "DESTINATION_FOCUS", "TRAVELER_MARKET", "Ethnicity Focus", "RESEARCH_TYPE", "Digital Marketing Insight", "corrections", "confidence"],
         "additionalProperties": False,
     }
 
@@ -2230,6 +2308,8 @@ def build_output(pages: List[Dict[str, Any]], source_url: str = "", pdf_path: st
 
     eth, ev_eth, pg_eth, conf_eth = extract_ethnicity_focus(pages)
     legacy["Ethnicity Focus"] = eth
+    row["Ethnicity Focus"] = eth
+    reviews["Ethnicity Focus"] = FieldReview(eth, conf_eth, ev_eth, pg_eth, "rule", conf_eth < 85)
 
     old_traveler_market, ev_tm, conf_tm = classify_traveler_market(text)
     legacy["Traveler Market"] = old_traveler_market
@@ -2259,6 +2339,9 @@ def build_output(pages: List[Dict[str, Any]], source_url: str = "", pdf_path: st
     row["Conclusion"] = concl_rule
     reviews["Conclusion"] = FieldReview(concl_rule, conf, ev, pg, "rule", conf < 85)
 
+    dm_rule, ev, conf = extract_digital_marketing_insight_rule(text)
+    row["Digital Marketing Insight"] = dm_rule
+    reviews["Digital Marketing Insight"] = FieldReview(dm_rule, conf, ev, None, "rule", conf < 85)
 
     llm_used = False
     llm_error = ""
@@ -2295,6 +2378,7 @@ def build_output(pages: List[Dict[str, Any]], source_url: str = "", pdf_path: st
             ai_methodology = clean_text(llm_result.get("methodology", "")) or "Not specified"
             ai_data_points = normalize_bullet_block("\n".join(llm_result.get("data_points", []) or []))
             ai_conclusion = clean_text(llm_result.get("conclusion", "")) or "Not specified"
+            ai_dm = clean_text(llm_result.get("digital_marketing_insight", "")) or "Not specified"
 
             final_sample, final_conf, final_method = choose_final_value(row["Sample"], reviews["Sample"].confidence_pct, ai_sample, 90 if ai_sample != "Not specified" else 0, prefer_rule_threshold=92)
             row["Sample"] = final_sample
@@ -2312,6 +2396,10 @@ def build_output(pages: List[Dict[str, Any]], source_url: str = "", pdf_path: st
             row["Conclusion"] = final_conclusion
             reviews["Conclusion"] = FieldReview(row["Conclusion"], final_conf, "Rule/AI arbitration for Conclusion", reviews["Conclusion"].evidence_page, final_method, final_conf < 85)
 
+            final_dm, final_conf, final_method = choose_final_value(row["Digital Marketing Insight"], reviews["Digital Marketing Insight"].confidence_pct, ai_dm, 90 if ai_dm != "Not specified" else 0, prefer_rule_threshold=88)
+            row["Digital Marketing Insight"] = final_dm
+            reviews["Digital Marketing Insight"] = FieldReview(row["Digital Marketing Insight"], final_conf, "Rule/AI arbitration for Digital Marketing Insight", reviews["Digital Marketing Insight"].evidence_page, final_method, final_conf < 85)
+
             draft_for_validation = {
                 "Title": row["Title"],
                 "Publisher": row["Publisher"],
@@ -2319,7 +2407,9 @@ def build_output(pages: List[Dict[str, Any]], source_url: str = "", pdf_path: st
                 "CATEGORY": row["CATEGORY"],
                 "DESTINATION_FOCUS": row["DESTINATION_FOCUS"],
                 "TRAVELER_MARKET": row["TRAVELER_MARKET"],
+                "Ethnicity Focus": row["Ethnicity Focus"],
                 "RESEARCH_TYPE": row["RESEARCH_TYPE"],
+                "Digital Marketing Insight": row["Digital Marketing Insight"],
                 "Sample": row["Sample"],
                 "Methodology": row["Methodology"],
                 "Data Points": row["Data Points"],
@@ -2354,11 +2444,13 @@ def build_output(pages: List[Dict[str, Any]], source_url: str = "", pdf_path: st
     row["CATEGORY"] = clean_text(row.get("CATEGORY", "")) or "Not specified"
     row["DESTINATION_FOCUS"] = clean_text(row.get("DESTINATION_FOCUS", "")) or "Not specified"
     row["TRAVELER_MARKET"] = clean_text(row.get("TRAVELER_MARKET", "")) or "Not specified"
+    row["Ethnicity Focus"] = clean_text(row.get("Ethnicity Focus", "")) or "Not specified"
     row["RESEARCH_TYPE"] = clean_text(row.get("RESEARCH_TYPE", "")) or "Report"
     row["Sample"] = clean_text(row.get("Sample", "")) or "Not specified"
     row["Methodology"] = format_methodology_summary(row.get("Methodology", ""))
     row["Data Points"] = normalize_bullet_block(row.get("Data Points", ""))
     row["Conclusion"] = clean_text(row.get("Conclusion", "")) or "Not specified"
+    row["Digital Marketing Insight"] = clean_text(row.get("Digital Marketing Insight", "")) or "Not specified"
 
     for field in FIELDS:
         row[field] = str(row.get(field, "")).strip() or "Not specified"
