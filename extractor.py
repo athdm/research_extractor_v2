@@ -55,6 +55,7 @@ DISPLAY_COLUMNS = [
     "Sample",
     "Methodology",
     "Data Points",
+    "Summary",
     "Conclusion",
     "Digital Marketing Insight",
 ]
@@ -1713,6 +1714,50 @@ def extract_data_points_rule(pages: List[Dict[str, Any]], role_scores: Dict[int,
     return ("\n".join(picked), picked, 88) if picked else ("Not specified", [], 70)
 
 
+DISCLAIMER_TERMS = [
+    "copyright",
+    "all rights reserved",
+    "terms and conditions",
+    "privacy policy",
+    "cookie",
+    "disclaimer",
+    "not possible to eliminate every margin of error",
+    "every possible effort has been made",
+    "no responsibility",
+    "liability",
+    "manage consent",
+]
+
+
+def is_disclaimer_or_boilerplate(value: str) -> bool:
+    low = clean_text(value).lower()
+    if not low:
+        return True
+    if any(term in low for term in DISCLAIMER_TERMS):
+        return True
+    # Very short fragments are not useful conclusions.
+    if len(low.split()) < 8:
+        return True
+    return False
+
+
+def normalize_conclusion_or_summary(value: str) -> str:
+    value = clean_text(value)
+    if not value or value.lower() == "not specified":
+        return "Not specified"
+    if is_disclaimer_or_boilerplate(value):
+        return "Not specified"
+    return value
+
+def normalize_summary(value: str) -> str:
+    value = clean_text(value)
+    if not value or value.lower() == "not specified":
+        return "Not specified"
+    if is_disclaimer_or_boilerplate(value):
+        return "Not specified"
+    return value
+
+
 def extract_conclusion_rule(pages: List[Dict[str, Any]], role_scores: Dict[int, Dict[str, int]]) -> Tuple[str, str, Optional[int], int]:
     conclusion_pages = top_pages_by_role(pages, role_scores, "conclusion", limit=4)
     if not conclusion_pages:
@@ -2003,6 +2048,36 @@ def extract_digital_marketing_insight_rule(text: str) -> Tuple[str, str, int]:
     return " • ".join(selected), evidence, 78
 
 
+def generate_basic_summary_fallback(row: Dict[str, str]) -> str:
+    """Create a simple non-AI summary from extracted fields when Gemini summary is unavailable."""
+    title = clean_text(row.get("Title", ""))
+    publisher = clean_text(row.get("Publisher", ""))
+    category = clean_text(row.get("CATEGORY", ""))
+    market = clean_text(row.get("TRAVELER_MARKET", ""))
+    data_points = clean_text(row.get("Data Points", ""))
+    conclusion = clean_text(row.get("Conclusion", ""))
+
+    parts = []
+    if title and title.lower() != "not specified":
+        if publisher and publisher.lower() != "not specified":
+            parts.append(f"{title} by {publisher} covers tourism/travel research insights.")
+        else:
+            parts.append(f"{title} covers tourism/travel research insights.")
+
+    if category and category.lower() != "not specified":
+        parts.append(f"The main topics identified are {category}.")
+    if market and market.lower() != "not specified":
+        parts.append(f"The relevant traveler market includes {market}.")
+    if data_points and data_points.lower() != "not specified":
+        first_dp = data_points.replace("•", "").split("\n")[0].strip()
+        if first_dp:
+            parts.append(f"One key finding is: {first_dp}")
+    if conclusion and conclusion.lower() != "not specified":
+        parts.append(f"Overall takeaway: {conclusion}")
+
+    summary = " ".join(parts).strip()
+    return summary if summary else "Not specified"
+
 # =========================================================
 # Gemini helpers
 # =========================================================
@@ -2207,6 +2282,113 @@ def llm_crosscheck_crm_fields(client: Any, model: str, fallback_model: str, page
         max_retries=3,
     )
 
+def llm_generate_conclusion_summary(client: Any, model: str, fallback_model: str, pages_for_llm: List[Dict[str, Any]], draft_row: Dict[str, str]) -> Tuple[str, str]:
+    context = "\n\n".join(_make_page_brief(p, max_chars=1400) for p in pages_for_llm)[:12000]
+    draft_json = json.dumps(draft_row, ensure_ascii=False, indent=2)
+    prompt = (
+        "Write a concise conclusion or summary for this tourism/travel research source. "
+        "Return 2-4 sentences. Focus on the main finding, trend, implication, or takeaway. "
+        "Do not include copyright, legal disclaimers, privacy policy text, website footer text, or boilerplate. "
+        "If the source contains no meaningful conclusion or summary, return Not specified.\n\n"
+        f"Draft extraction:\n{draft_json}\n\n"
+        f"Document excerpts:\n{context}"
+    )
+
+    models_to_try = [model]
+    if fallback_model and fallback_model != model:
+        models_to_try.append(fallback_model)
+
+    last_err = None
+    for chosen_model in models_to_try:
+        try:
+            response = client.chat.completions.create(
+                model=chosen_model,
+                messages=[
+                    {"role": "system", "content": "You write accurate, concise research summaries from provided excerpts only."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.1,
+            )
+            return normalize_conclusion_or_summary(response.choices[0].message.content or ""), chosen_model
+        except Exception as e:
+            last_err = e
+            continue
+    if last_err:
+        raise last_err
+    return "Not specified", ""
+
+def llm_generate_summary(client: Any, model: str, fallback_model: str, pages_for_llm: List[Dict[str, Any]], draft_row: Dict[str, str]) -> Tuple[str, str]:
+    context = "\n\n".join(_make_page_brief(p, max_chars=1400) for p in pages_for_llm)[:12000]
+    draft_json = json.dumps(draft_row, ensure_ascii=False, indent=2)
+    prompt = (
+        "Write a concise summary for this tourism/travel research source. "
+        "Return 2-4 sentences. Focus on the core topic, main findings, useful data points, and practical relevance. "
+        "Do not include copyright, legal disclaimers, privacy policy text, website footer text, or boilerplate. "
+        "If there is not enough meaningful content, return Not specified.\n\n"
+        f"Draft extraction:\n{draft_json}\n\n"
+        f"Document excerpts:\n{context}"
+    )
+
+    models_to_try = [model]
+    if fallback_model and fallback_model != model:
+        models_to_try.append(fallback_model)
+
+    last_err = None
+    for chosen_model in models_to_try:
+        try:
+            response = client.chat.completions.create(
+                model=chosen_model,
+                messages=[
+                    {"role": "system", "content": "You write accurate, concise research summaries from provided excerpts only."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.1,
+            )
+            return normalize_summary(response.choices[0].message.content or ""), chosen_model
+        except Exception as e:
+            last_err = e
+            continue
+    if last_err:
+        raise last_err
+    return "Not specified", ""
+
+
+def llm_generate_conclusion_only(client: Any, model: str, fallback_model: str, pages_for_llm: List[Dict[str, Any]], draft_row: Dict[str, str]) -> Tuple[str, str]:
+    context = "\n\n".join(_make_page_brief(p, max_chars=1400) for p in pages_for_llm)[:12000]
+    draft_json = json.dumps(draft_row, ensure_ascii=False, indent=2)
+    prompt = (
+        "Extract or write the conclusion/takeaway for this tourism/travel research source. "
+        "Return 1-3 sentences focused on the final implication, recommendation, or strategic takeaway. "
+        "This is NOT a general summary; avoid restating all details. "
+        "Do not include copyright, legal disclaimers, privacy policy text, website footer text, or boilerplate. "
+        "If there is no meaningful conclusion or takeaway, return Not specified.\n\n"
+        f"Draft extraction:\n{draft_json}\n\n"
+        f"Document excerpts:\n{context}"
+    )
+
+    models_to_try = [model]
+    if fallback_model and fallback_model != model:
+        models_to_try.append(fallback_model)
+
+    last_err = None
+    for chosen_model in models_to_try:
+        try:
+            response = client.chat.completions.create(
+                model=chosen_model,
+                messages=[
+                    {"role": "system", "content": "You extract concise conclusions and strategic takeaways from provided excerpts only."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.1,
+            )
+            return normalize_conclusion_or_summary(response.choices[0].message.content or ""), chosen_model
+        except Exception as e:
+            last_err = e
+            continue
+    if last_err:
+        raise last_err
+    return "Not specified", ""
+
 def build_llm_context_pages(
     pages: List[Dict[str, Any]],
     role_scores: Dict[int, Dict[str, int]],
@@ -2335,9 +2517,12 @@ def build_output(pages: List[Dict[str, Any]], source_url: str = "", pdf_path: st
     row["Data Points"] = normalize_bullet_block(dp_rule)
     reviews["Data Points"] = FieldReview(row["Data Points"], conf, evs[0] if evs else "", None, "rule", conf < 85)
 
+    row["Summary"] = "Not specified"
+    reviews["Summary"] = FieldReview("Not specified", 60, "Summary is generated by Gemini when available", None, "pending", True)
+
     concl_rule, ev, pg, conf = extract_conclusion_rule(pages, role_scores)
-    row["Conclusion"] = concl_rule
-    reviews["Conclusion"] = FieldReview(concl_rule, conf, ev, pg, "rule", conf < 85)
+    row["Conclusion"] = normalize_conclusion_or_summary(concl_rule)
+    reviews["Conclusion"] = FieldReview(row["Conclusion"], conf if row["Conclusion"] != "Not specified" else 65, ev, pg, "rule", row["Conclusion"] == "Not specified" or conf < 85)
 
     dm_rule, ev, conf = extract_digital_marketing_insight_rule(text)
     row["Digital Marketing Insight"] = dm_rule
@@ -2377,7 +2562,7 @@ def build_output(pages: List[Dict[str, Any]], source_url: str = "", pdf_path: st
             ai_sample = clean_text(llm_result.get("sample", "")) or "Not specified"
             ai_methodology = clean_text(llm_result.get("methodology", "")) or "Not specified"
             ai_data_points = normalize_bullet_block("\n".join(llm_result.get("data_points", []) or []))
-            ai_conclusion = clean_text(llm_result.get("conclusion", "")) or "Not specified"
+            ai_conclusion = normalize_conclusion_or_summary(llm_result.get("conclusion", ""))
             ai_dm = clean_text(llm_result.get("digital_marketing_insight", "")) or "Not specified"
 
             final_sample, final_conf, final_method = choose_final_value(row["Sample"], reviews["Sample"].confidence_pct, ai_sample, 90 if ai_sample != "Not specified" else 0, prefer_rule_threshold=92)
@@ -2393,8 +2578,8 @@ def build_output(pages: List[Dict[str, Any]], source_url: str = "", pdf_path: st
             reviews["Data Points"] = FieldReview(row["Data Points"], final_conf, "Rule/AI arbitration for Data Points", reviews["Data Points"].evidence_page, final_method, final_conf < 85)
 
             final_conclusion, final_conf, final_method = choose_final_value(row["Conclusion"], reviews["Conclusion"].confidence_pct, ai_conclusion, 92 if ai_conclusion != "Not specified" else 0, prefer_rule_threshold=90)
-            row["Conclusion"] = final_conclusion
-            reviews["Conclusion"] = FieldReview(row["Conclusion"], final_conf, "Rule/AI arbitration for Conclusion", reviews["Conclusion"].evidence_page, final_method, final_conf < 85)
+            row["Conclusion"] = normalize_conclusion_or_summary(final_conclusion)
+            reviews["Conclusion"] = FieldReview(row["Conclusion"], final_conf if row["Conclusion"] != "Not specified" else 65, "Rule/AI arbitration for Conclusion/Summary", reviews["Conclusion"].evidence_page, final_method, row["Conclusion"] == "Not specified" or final_conf < 85)
 
             final_dm, final_conf, final_method = choose_final_value(row["Digital Marketing Insight"], reviews["Digital Marketing Insight"].confidence_pct, ai_dm, 90 if ai_dm != "Not specified" else 0, prefer_rule_threshold=88)
             row["Digital Marketing Insight"] = final_dm
@@ -2413,6 +2598,7 @@ def build_output(pages: List[Dict[str, Any]], source_url: str = "", pdf_path: st
                 "Sample": row["Sample"],
                 "Methodology": row["Methodology"],
                 "Data Points": row["Data Points"],
+                "Summary": row["Summary"],
                 "Conclusion": row["Conclusion"],
                 "Legacy Category": legacy.get("Category", ""),
                 "Legacy Destination Focus": legacy.get("Destination Focus", ""),
@@ -2433,6 +2619,80 @@ def build_output(pages: List[Dict[str, Any]], source_url: str = "", pdf_path: st
             if not llm_model_used:
                 llm_model_used = crm_model_used
 
+            # Always generate a separate Summary with Gemini when enough text is available.
+            # Summary is different from Conclusion: it describes the source overall.
+            draft_for_summary = {
+                "Title": row.get("Title", ""),
+                "Publisher": row.get("Publisher", ""),
+                "Date": row.get("Date", ""),
+                "CATEGORY": row.get("CATEGORY", ""),
+                "DESTINATION_FOCUS": row.get("DESTINATION_FOCUS", ""),
+                "TRAVELER_MARKET": row.get("TRAVELER_MARKET", ""),
+                "Ethnicity Focus": row.get("Ethnicity Focus", ""),
+                "RESEARCH_TYPE": row.get("RESEARCH_TYPE", ""),
+                "Sample": row.get("Sample", ""),
+                "Methodology": row.get("Methodology", ""),
+                "Data Points": row.get("Data Points", ""),
+                "Conclusion": row.get("Conclusion", ""),
+            }
+            summary_value, summary_model_used = llm_generate_summary(
+                client, model, fallback_model, llm_pages, draft_for_summary
+            )
+            if summary_value and summary_value.strip().lower() != "not specified":
+                row["Summary"] = summary_value
+                reviews["Summary"] = FieldReview(
+                    summary_value,
+                    88,
+                    "Gemini generated separate source summary",
+                    None,
+                    "gemini-summary",
+                    False,
+                )
+                llm_debug["calls"].append(
+                    {
+                        "field_group": "summary",
+                        "model": summary_model_used,
+                        "pages": [p["page"] for p in llm_pages],
+                    }
+                )
+                if not llm_model_used:
+                    llm_model_used = summary_model_used
+
+            if row.get("Conclusion", "Not specified").strip().lower() == "not specified":
+                draft_for_conclusion = {
+                    "Title": row.get("Title", ""),
+                    "Publisher": row.get("Publisher", ""),
+                    "Date": row.get("Date", ""),
+                    "CATEGORY": row.get("CATEGORY", ""),
+                    "DESTINATION_FOCUS": row.get("DESTINATION_FOCUS", ""),
+                    "TRAVELER_MARKET": row.get("TRAVELER_MARKET", ""),
+                    "RESEARCH_TYPE": row.get("RESEARCH_TYPE", ""),
+                    "Summary": row.get("Summary", ""),
+                    "Data Points": row.get("Data Points", ""),
+                }
+                conclusion_value, conclusion_model_used = llm_generate_conclusion_only(
+                    client, model, fallback_model, llm_pages, draft_for_conclusion
+                )
+                if conclusion_value and conclusion_value.lower() != "not specified":
+                    row["Conclusion"] = conclusion_value
+                    reviews["Conclusion"] = FieldReview(
+                        conclusion_value,
+                        86,
+                        "Gemini generated conclusion/takeaway because no valid conclusion was found",
+                        None,
+                        "gemini-conclusion",
+                        False,
+                    )
+                    llm_debug["calls"].append(
+                        {
+                            "field_group": "conclusion_fallback",
+                            "model": conclusion_model_used,
+                            "pages": [p["page"] for p in llm_pages],
+                        }
+                    )
+                    if not llm_model_used:
+                        llm_model_used = conclusion_model_used
+
         except GeminiQuotaExhaustedError:
             llm_error = "You hit the daily limit."
         except Exception as e:
@@ -2449,7 +2709,19 @@ def build_output(pages: List[Dict[str, Any]], source_url: str = "", pdf_path: st
     row["Sample"] = clean_text(row.get("Sample", "")) or "Not specified"
     row["Methodology"] = format_methodology_summary(row.get("Methodology", ""))
     row["Data Points"] = normalize_bullet_block(row.get("Data Points", ""))
-    row["Conclusion"] = clean_text(row.get("Conclusion", "")) or "Not specified"
+    row["Summary"] = normalize_summary(row.get("Summary", ""))
+    if row["Summary"] == "Not specified":
+        row["Summary"] = generate_basic_summary_fallback(row)
+        if "Summary" in reviews:
+            reviews["Summary"] = FieldReview(
+                row["Summary"],
+                72 if row["Summary"] != "Not specified" else 60,
+                "Basic fallback summary from extracted fields",
+                None,
+                "fallback-summary",
+                row["Summary"] == "Not specified",
+            )
+    row["Conclusion"] = normalize_conclusion_or_summary(row.get("Conclusion", ""))
     row["Digital Marketing Insight"] = clean_text(row.get("Digital Marketing Insight", "")) or "Not specified"
 
     for field in FIELDS:
