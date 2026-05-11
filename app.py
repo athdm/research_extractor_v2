@@ -215,44 +215,6 @@ def _teable_endpoint(path: str) -> str:
     return f"{api_url}{path}"
 
 
-def upload_pdf_attachment_to_teable(record_id: str, pdf_bytes: bytes, filename: str) -> Dict[str, Any]:
-    """Upload the actual PDF file into a Teable Attachment field after record creation."""
-    table_id = get_secret("TEABLE_TABLE_ID")
-    attachment_field_id = get_secret("TEABLE_PDF_ATTACHMENT_FIELD_ID")
-
-    if not table_id:
-        raise RuntimeError("TEABLE_TABLE_ID is missing")
-    if not attachment_field_id:
-        raise RuntimeError("TEABLE_PDF_ATTACHMENT_FIELD_ID is missing. Create a Teable Attachment field and add its field ID to Streamlit Secrets.")
-    if not record_id:
-        raise RuntimeError("Teable record ID is missing; cannot upload attachment.")
-    if not pdf_bytes:
-        raise RuntimeError("No PDF bytes found to upload.")
-
-    endpoint = _teable_endpoint(
-        f"/api/table/{table_id}/record/{record_id}/{attachment_field_id}/uploadAttachment"
-    )
-    headers = {
-        "Authorization": f"Bearer {get_secret('TEABLE_API_TOKEN')}",
-    }
-    files = {
-        "file": (filename or "source.pdf", pdf_bytes, "application/pdf"),
-    }
-
-    response = requests.post(endpoint, headers=headers, files=files, timeout=90)
-
-    if response.status_code >= 400:
-        try:
-            detail = response.json()
-        except Exception:
-            detail = response.text
-        raise RuntimeError(f"Teable attachment upload error {response.status_code}: {detail}")
-
-    try:
-        return response.json()
-    except Exception:
-        return {"status": "ok"}
-
 
 def list_teable_records(limit: int = 100) -> List[Dict[str, Any]]:
     table_id = get_secret("TEABLE_TABLE_ID")
@@ -595,8 +557,6 @@ def main():
         "last_effective_source_url": "",
         "last_loaded_label": "",
         "last_source_type": "",
-        "last_source_pdf_bytes": b"",
-        "last_source_pdf_filename": "",
         "last_pdf_source_url": "",
         "last_pdf_file_name": "",
         "last_sent_teable_record_id": "",
@@ -645,17 +605,13 @@ def main():
         loaded_label = ""
         effective_source_url = source_url.strip()
         source_type = ""
-        source_pdf_bytes = b""
-        source_pdf_filename = ""
         pdf_source_url = ""
         pdf_file_name = ""
 
         try:
             if uploaded_pdf is not None:
                 with st.spinner("Reading PDF..."):
-                    source_pdf_bytes = uploaded_pdf.getvalue()
-                    source_pdf_filename = uploaded_pdf.name
-                    pages = extract_pdf_pages(source_pdf_bytes)
+                    pages = extract_pdf_pages(uploaded_pdf)
                 source_type = "PDF upload"
                 pdf_file_name = uploaded_pdf.name
                 pdf_source_url = source_url.strip()
@@ -674,9 +630,7 @@ def main():
                 effective_source_url = fetched.get("source_url", effective_source_url)
 
                 if fetched["type"] == "pdf":
-                    source_pdf_bytes = fetched["content"]
-                    source_pdf_filename = Path(effective_source_url.split("?")[0]).name or "source.pdf"
-                    pages = extract_pdf_pages(source_pdf_bytes)
+                    pages = extract_pdf_pages(fetched["content"])
                     source_type = "URL PDF"
                     pdf_source_url = effective_source_url
                     pdf_file_name = ""
@@ -719,8 +673,6 @@ def main():
         st.session_state.last_effective_source_url = effective_source_url
         st.session_state.last_loaded_label = loaded_label
         st.session_state.last_source_type = source_type
-        st.session_state.last_source_pdf_bytes = source_pdf_bytes
-        st.session_state.last_source_pdf_filename = source_pdf_filename
         st.session_state.last_pdf_source_url = pdf_source_url
         st.session_state.last_pdf_file_name = pdf_file_name
         st.session_state.last_sent_teable_record_id = ""
@@ -735,8 +687,6 @@ def main():
     effective_source_url = st.session_state.last_effective_source_url
     loaded_label = st.session_state.last_loaded_label
     source_type = st.session_state.last_source_type
-    source_pdf_bytes = st.session_state.last_source_pdf_bytes
-    source_pdf_filename = st.session_state.last_source_pdf_filename
     pdf_source_url = st.session_state.last_pdf_source_url
     pdf_file_name = st.session_state.last_pdf_file_name
     row = result.final_row
@@ -836,22 +786,10 @@ def main():
                 if isinstance(records, list) and records:
                     record_id = str(records[0].get("id", ""))
 
-                attachment_response = None
-                if record_id and source_pdf_bytes:
-                    attachment_response = upload_pdf_attachment_to_teable(
-                        record_id=record_id,
-                        pdf_bytes=source_pdf_bytes,
-                        filename=source_pdf_filename or "source.pdf",
-                    )
-
                 st.session_state.last_sent_teable_record_id = record_id or "sent"
-                if attachment_response:
-                    st.success(f"Result and PDF source sent to Teable{f' — Record ID: {record_id}' if record_id else ''}.")
-                else:
-                    st.success(f"Result sent to Teable{f' — Record ID: {record_id}' if record_id else ''}.")
-
+                st.success(f"Result sent to Teable{f' — Record ID: {record_id}' if record_id else ''}.")
                 with st.expander("Teable API response"):
-                    st.json({"record": teable_response, "attachment": attachment_response})
+                    st.json(teable_response)
 
             except Exception as e:
                 st.error(f"Could not send to Teable: {e}")
@@ -899,9 +837,6 @@ def main():
             "teable_token_loaded": bool(teable_token),
             "teable_table_id_loaded": bool(teable_table_id),
             "source_type": source_type,
-            "source_pdf_filename": source_pdf_filename,
-            "source_pdf_available_for_attachment": bool(source_pdf_bytes),
-            "teable_pdf_attachment_field_id_loaded": bool(get_secret("TEABLE_PDF_ATTACHMENT_FIELD_ID")),
             "pdf_source_url": pdf_source_url,
             "pdf_file_name": pdf_file_name,
             "ocr_used": ocr_used,
