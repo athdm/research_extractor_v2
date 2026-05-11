@@ -52,65 +52,6 @@ CATEGORY_OPTIONS = [
     "Destinations / DMOs",
     "MICE & Business Travel",
     "Special Interest Tourism",
-    "Private Tours",
-    "Guided Tours",
-    "Food Tours",
-    "Wine Tours",
-    "Luxury Tours",
-    "Walking Tours",
-    "Boat Tours",
-    "Sailing",
-    "Yachting",
-    "Island Hopping",
-    "Photography Travel",
-    "Wellness Retreats",
-    "Retreat Tourism",
-    "Experiential Travel",
-    "Immersive Travel",
-    "Local Culture",
-    "Hidden Gems",
-    "Off-the-Beaten-Path",
-    "Authentic Travel",
-    "Bucket List Travel",
-    "Experience-Based Travel",
-    "Slow Experiences",
-    "Premium Dining",
-    "Street Food Tourism",
-    "Cooking Classes",
-    "Farm Experiences",
-    "Agri-Tourism",
-    "Creative Tourism",
-    "Remote Work Travel",
-    "Digital Nomads",
-    "Workations",
-    "Festival Tourism",
-    "Music Tourism",
-    "Event Tourism",
-    "Shopping Tourism",
-    "Luxury Shopping",
-    "Theme Parks",
-    "Entertainment Tourism",
-    "Eco Retreats",
-    "Mindfulness Travel",
-    "Sleep Tourism",
-    "Biohacking Retreats",
-    "Longevity Travel",
-    "Sports Experiences",
-    "Adventure Experiences",
-    "Water Sports",
-    "Diving & Snorkeling",
-    "Roadtrip Tourism",
-    "Vanlife",
-    "Train Journeys",
-    "Scenic Rail",
-    "Multi-generational Travel",
-    "Pet-friendly Travel",
-    "Women-only Travel",
-    "LGBTQ+ Travel",
-    "Accessible Travel",
-    "Inclusive Tourism",
-    "Tours & Activities",
-    "Niche & Special Interest Tourism",
 ]
 
 DESTINATION_FOCUS_OPTIONS = [
@@ -490,6 +431,38 @@ def compute_default_status(needs_review_count: int) -> str:
     return "Needs Review" if needs_review_count > 0 else "New"
 
 
+def generate_default_usefulness(row: Dict[str, Any], metadata: Dict[str, Any]) -> str:
+    title = str(row.get("Title", "")).strip()
+    category = str(row.get("CATEGORY", "")).strip()
+    traveler_market = str(row.get("TRAVELER_MARKET", "")).strip()
+    digital_insight = str(row.get("Digital Marketing Insight", "")).strip()
+    summary = str(row.get("Summary", "")).strip()
+    data_points = str(row.get("Data Points", "")).strip()
+
+    parts = []
+
+    if title and title.lower() != "not specified":
+        parts.append(f"Useful source for tracking insights from '{title}'.")
+
+    if category and category.lower() != "not specified":
+        parts.append(f"It can support monitoring of themes such as {category}.")
+
+    if traveler_market and traveler_market.lower() != "not specified":
+        parts.append(f"It is relevant for understanding traveler segments such as {traveler_market}.")
+
+    if digital_insight and digital_insight.lower() != "not specified":
+        parts.append(f"Marketing relevance: {digital_insight}")
+
+    elif summary and summary.lower() != "not specified":
+        parts.append(f"Strategic relevance: {summary}")
+
+    if data_points and data_points.lower() != "not specified":
+        first_dp = data_points.replace("•", "").splitlines()[0].strip()
+        if first_dp:
+            parts.append(f"Contains usable supporting data, for example: {first_dp}")
+
+    return " ".join(parts).strip()
+
 def render_editable_review(row: Dict[str, Any], metadata: Dict[str, Any]) -> Dict[str, Any]:
     st.subheader("Review before sending")
     st.caption("Edit any field before sending the result to Teable.")
@@ -795,7 +768,11 @@ def main():
         "Needs Review Count": needs_review,
         "Status": status_default,
         "Source Quality": quality_default,
-        "Usefulness": "",
+        "Usefulness": generate_default_usefulness(row, {
+            "Source Type": source_type,
+            "Confidence Score": avg_conf,
+            "Needs Review Count": needs_review,
+        }),
         "Reviewer Notes": "",
     }
 
