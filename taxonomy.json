@@ -256,6 +256,39 @@
           "baby boomers",
           "age groups",
           "consumer segments"
+        ],
+        "Experiences": [
+          "experiences",
+          "experience-led travel",
+          "experiential travel",
+          "immersive experiences",
+          "tours",
+          "activities"
+        ],
+        "Tours & Activities": [
+          "tour",
+          "tours",
+          "guided tours",
+          "private tours",
+          "food tours",
+          "walking tours",
+          "activities"
+        ],
+        "Food & Beverage": [
+          "food and beverage",
+          "food & beverage",
+          "culinary",
+          "food tours",
+          "wine tours",
+          "dining"
+        ],
+        "Niche & Special Interest Tourism": [
+          "special interest tourism",
+          "niche tourism",
+          "sleep tourism",
+          "longevity travel",
+          "digital nomads",
+          "workations"
         ]
       }
     },
@@ -613,6 +646,390 @@
           "overseas travel",
           "cross-border travel",
           "cross border travel"
+        ],
+        "Private Tours": [
+          "private tour",
+          "private tours",
+          "private guide",
+          "private guided tour",
+          "private excursion"
+        ],
+        "Guided Tours": [
+          "guided tour",
+          "guided tours",
+          "tour guide",
+          "guided experience",
+          "guided excursion"
+        ],
+        "Food Tours": [
+          "food tour",
+          "food tours",
+          "culinary tour",
+          "culinary tours",
+          "street food tour",
+          "street food tours"
+        ],
+        "Wine Tours": [
+          "wine tour",
+          "wine tours",
+          "wine tasting",
+          "vineyard tour",
+          "winery tour",
+          "wineries"
+        ],
+        "Luxury Tours": [
+          "luxury tour",
+          "luxury tours",
+          "premium tour",
+          "vip tour",
+          "exclusive tour"
+        ],
+        "Walking Tours": [
+          "walking tour",
+          "walking tours",
+          "city walk",
+          "guided walk",
+          "heritage walk"
+        ],
+        "Boat Tours": [
+          "boat tour",
+          "boat tours",
+          "boat trip",
+          "boat trips",
+          "cruise excursion",
+          "water tour"
+        ],
+        "Sailing": [
+          "sailing",
+          "sailboat",
+          "sail boat",
+          "sailing trip",
+          "sailing holiday"
+        ],
+        "Yachting": [
+          "yachting",
+          "yacht",
+          "yachts",
+          "private yacht",
+          "superyacht"
+        ],
+        "Island Hopping": [
+          "island hopping",
+          "island-hop",
+          "multi-island",
+          "greek islands"
+        ],
+        "Photography Travel": [
+          "photography travel",
+          "photo tour",
+          "photography tour",
+          "photo safari",
+          "instagrammable"
+        ],
+        "Wellness Retreats": [
+          "wellness retreat",
+          "wellness retreats",
+          "spa retreat",
+          "yoga retreat",
+          "meditation retreat"
+        ],
+        "Retreat Tourism": [
+          "retreat tourism",
+          "retreat travel",
+          "retreats",
+          "wellbeing retreat",
+          "well-being retreat"
+        ],
+        "Experiential Travel": [
+          "experiential travel",
+          "experience-led travel",
+          "experience led travel",
+          "experiential tourism"
+        ],
+        "Immersive Travel": [
+          "immersive travel",
+          "immersive tourism",
+          "immersive experience",
+          "immersive experiences"
+        ],
+        "Local Culture": [
+          "local culture",
+          "local traditions",
+          "cultural immersion",
+          "meet locals",
+          "local community"
+        ],
+        "Hidden Gems": [
+          "hidden gem",
+          "hidden gems",
+          "lesser-known",
+          "lesser known",
+          "undiscovered destination"
+        ],
+        "Off-the-Beaten-Path": [
+          "off the beaten path",
+          "off-the-beaten-path",
+          "less crowded",
+          "underrated destination"
+        ],
+        "Authentic Travel": [
+          "authentic travel",
+          "authentic tourism",
+          "authentic experience",
+          "authentic experiences"
+        ],
+        "Bucket List Travel": [
+          "bucket list",
+          "bucket-list",
+          "once-in-a-lifetime",
+          "once in a lifetime"
+        ],
+        "Experience-Based Travel": [
+          "experience-based travel",
+          "experiences-based travel",
+          "experience driven",
+          "experience-driven"
+        ],
+        "Slow Experiences": [
+          "slow experience",
+          "slow experiences",
+          "slow travel",
+          "slow tourism",
+          "take it slow"
+        ],
+        "Premium Dining": [
+          "premium dining",
+          "fine dining",
+          "high-end restaurant",
+          "chef-led",
+          "chef driven",
+          "chef-driven"
+        ],
+        "Street Food Tourism": [
+          "street food",
+          "street food tourism",
+          "night market",
+          "night markets",
+          "food market"
+        ],
+        "Cooking Classes": [
+          "cooking class",
+          "cooking classes",
+          "cookery class",
+          "culinary class",
+          "culinary workshop"
+        ],
+        "Farm Experiences": [
+          "farm experience",
+          "farm experiences",
+          "farm stay",
+          "farm visit",
+          "farm-to-table"
+        ],
+        "Agri-Tourism": [
+          "agri-tourism",
+          "agritourism",
+          "agri tourism",
+          "farm tourism",
+          "rural farm"
+        ],
+        "Creative Tourism": [
+          "creative tourism",
+          "creative travel",
+          "craft workshop",
+          "artisan workshop",
+          "art workshop"
+        ],
+        "Remote Work Travel": [
+          "remote work travel",
+          "remote work",
+          "work remotely",
+          "work from anywhere"
+        ],
+        "Digital Nomads": [
+          "digital nomad",
+          "digital nomads",
+          "nomad visa",
+          "remote workers"
+        ],
+        "Workations": [
+          "workation",
+          "workations",
+          "work vacation",
+          "work-from-holiday"
+        ],
+        "Festival Tourism": [
+          "festival tourism",
+          "festival travel",
+          "festivals",
+          "music festival",
+          "cultural festival"
+        ],
+        "Music Tourism": [
+          "music tourism",
+          "music travel",
+          "concert travel",
+          "live music",
+          "music festival"
+        ],
+        "Event Tourism": [
+          "event tourism",
+          "event travel",
+          "events",
+          "concert tourism",
+          "cultural events"
+        ],
+        "Shopping Tourism": [
+          "shopping tourism",
+          "shopping travel",
+          "retail tourism",
+          "shopping district"
+        ],
+        "Luxury Shopping": [
+          "luxury shopping",
+          "luxury retail",
+          "designer shopping",
+          "premium retail"
+        ],
+        "Theme Parks": [
+          "theme park",
+          "theme parks",
+          "amusement park",
+          "attractions park"
+        ],
+        "Entertainment Tourism": [
+          "entertainment tourism",
+          "entertainment travel",
+          "shows",
+          "theatre tourism",
+          "night entertainment"
+        ],
+        "Eco Retreats": [
+          "eco retreat",
+          "eco retreats",
+          "sustainable retreat",
+          "nature retreat",
+          "eco lodge"
+        ],
+        "Mindfulness Travel": [
+          "mindfulness travel",
+          "mindfulness retreat",
+          "meditation travel",
+          "mental wellbeing"
+        ],
+        "Sleep Tourism": [
+          "sleep tourism",
+          "sleep retreat",
+          "sleep-focused",
+          "sleep wellness",
+          "restorative sleep"
+        ],
+        "Biohacking Retreats": [
+          "biohacking retreat",
+          "biohacking retreats",
+          "biohacking",
+          "performance retreat"
+        ],
+        "Longevity Travel": [
+          "longevity travel",
+          "longevity retreat",
+          "longevity tourism",
+          "healthy ageing",
+          "anti-aging"
+        ],
+        "Sports Experiences": [
+          "sports experience",
+          "sports experiences",
+          "sporting event",
+          "sports event",
+          "game day"
+        ],
+        "Adventure Experiences": [
+          "adventure experience",
+          "adventure experiences",
+          "outdoor activity",
+          "adrenaline activity"
+        ],
+        "Water Sports": [
+          "water sports",
+          "watersports",
+          "jet skiing",
+          "kayaking",
+          "paddleboarding",
+          "surfing"
+        ],
+        "Diving & Snorkeling": [
+          "diving",
+          "snorkeling",
+          "scuba",
+          "scuba diving",
+          "dive trip"
+        ],
+        "Roadtrip Tourism": [
+          "roadtrip",
+          "road trip",
+          "road trips",
+          "self-drive",
+          "self drive"
+        ],
+        "Vanlife": [
+          "vanlife",
+          "van life",
+          "campervan",
+          "camper van",
+          "rv travel"
+        ],
+        "Train Journeys": [
+          "train journey",
+          "train journeys",
+          "rail journey",
+          "rail journeys",
+          "train travel"
+        ],
+        "Scenic Rail": [
+          "scenic rail",
+          "scenic railway",
+          "scenic train",
+          "rail tourism"
+        ],
+        "Multi-generational Travel": [
+          "multi-generational",
+          "multigenerational",
+          "three-generation",
+          "family reunion travel"
+        ],
+        "Pet-friendly Travel": [
+          "pet-friendly travel",
+          "pet friendly travel",
+          "travel with pets",
+          "dog-friendly"
+        ],
+        "Women-only Travel": [
+          "women-only travel",
+          "women only travel",
+          "female travelers",
+          "female travellers",
+          "women travelers"
+        ],
+        "LGBTQ+ Travel": [
+          "lgbtq travel",
+          "lgbtq+ travel",
+          "queer travel",
+          "gay travel",
+          "inclusive travel"
+        ],
+        "Accessible Travel": [
+          "accessible travel",
+          "accessibility",
+          "disabled travelers",
+          "wheelchair accessible",
+          "barrier-free"
+        ],
+        "Inclusive Tourism": [
+          "inclusive tourism",
+          "inclusive travel",
+          "accessible tourism",
+          "diverse travelers"
         ]
       }
     },
