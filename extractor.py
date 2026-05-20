@@ -1500,7 +1500,7 @@ def extract_ethnicity_focus(pages: List[Dict[str, Any]]) -> Tuple[str, str, Opti
             continue
         if _is_toc_line(s) or URL_PAT.search(s):
             continue
-        if re.search(r"\\(\\w.+?,\\s*\\d{4}", s):
+        if re.search(r"\(\w.+?,\s*\d{4}", s):
             continue
 
         has_context = any(term in low for term in source_market_context_terms + identity_context_terms)
