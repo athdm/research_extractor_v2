@@ -310,42 +310,49 @@ DATA_TERMS = [
 ]
 
 ETHNICITY_FOCUS_MAP = {
-    "American": ["american", "americans", "u.s. traveler", "u.s. travelers", "us traveler", "us travelers", "u.s. adults", "united states"],
-    "British": ["british", "uk traveler", "uk travelers", "united kingdom"],
-    "German": ["german", "germans", "germany"],
-    "Greek": ["greek", "greeks", "greece"],
-    "French": ["french", "france"],
-    "Italian": ["italian", "italians", "italy"],
-    "Spanish": ["spanish", "spain"],
-    "Portuguese": ["portuguese", "portugal"],
-    "Dutch": ["dutch", "netherlands"],
-    "Belgian": ["belgian", "belgium"],
-    "Swiss": ["swiss", "switzerland"],
-    "Austrian": ["austrian", "austria"],
-    "Nordic": ["nordic", "nordics"],
-    "Swedish": ["swedish", "sweden"],
-    "Norwegian": ["norwegian", "norway"],
-    "Danish": ["danish", "denmark"],
-    "Finnish": ["finnish", "finland"],
-    "Polish": ["polish", "poland"],
-    "Czech": ["czech", "czech republic"],
-    "Hungarian": ["hungarian", "hungary"],
-    "Romanian": ["romanian", "romania"],
-    "Turkish": ["turkish", "turkey"],
-    "Chinese": ["chinese", "china"],
-    "Japanese": ["japanese", "japan"],
-    "Korean": ["korean", "koreans", "south korea"],
-    "Indian": ["indian", "indians", "india"],
-    "Arab": ["arab", "arabs", "middle eastern"],
-    "African": ["african", "africa"],
-    "Latino / Hispanic": ["latino", "latina", "latinx", "hispanic"],
-    "Black": ["black", "african american", "african-american"],
-    "White": ["white", "caucasian"],
-    "Asian": ["asian", "south asian", "east asian", "southeast asian"],
-    "Indigenous": ["indigenous", "native american", "first nations"],
-    "Multiracial": ["multiracial", "mixed race"],
+    "American travelers": ["american", "americans", "u.s. traveler", "u.s. travelers", "us traveler", "us travelers", "u.s. adults", "united states", "usa"],
+    "British travelers": ["british", "uk traveler", "uk travelers", "uk travellers", "britons", "united kingdom", "uk market"],
+    "German travelers": ["german", "germans", "germany", "german market"],
+    "Greek travelers": ["greek", "greeks", "greece", "greek market"],
+    "French travelers": ["french", "france", "french market"],
+    "Italian travelers": ["italian", "italians", "italy", "italian market"],
+    "Spanish travelers": ["spanish", "spain", "spanish market"],
+    "Portuguese travelers": ["portuguese", "portugal"],
+    "Dutch travelers": ["dutch", "netherlands"],
+    "Belgian travelers": ["belgian", "belgium"],
+    "Swiss travelers": ["swiss", "switzerland"],
+    "Austrian travelers": ["austrian", "austria"],
+    "Nordic travelers": ["nordic", "nordics", "scandinavian", "scandinavia"],
+    "Swedish travelers": ["swedish", "sweden"],
+    "Norwegian travelers": ["norwegian", "norway"],
+    "Danish travelers": ["danish", "denmark"],
+    "Finnish travelers": ["finnish", "finland"],
+    "Polish travelers": ["polish", "poland"],
+    "Czech travelers": ["czech", "czech republic"],
+    "Hungarian travelers": ["hungarian", "hungary"],
+    "Romanian travelers": ["romanian", "romania"],
+    "Turkish travelers": ["turkish", "turkey"],
+    "Chinese travelers": ["chinese", "china", "greater china", "china outbound"],
+    "Japanese travelers": ["japanese", "japan"],
+    "Korean travelers": ["korean", "koreans", "south korea"],
+    "Indian travelers": ["indian", "indians", "india", "india outbound"],
+    "Middle Eastern travelers": ["middle eastern", "middle east", "gcc travelers", "gcc tourists", "arab travelers", "arab tourists", "uae travelers", "saudi travelers"],
+    "European travelers": ["european travelers", "european travellers", "european tourists", "european residents", "intra-european", "intra-europe"],
+    "International travelers": ["international travelers", "international travellers", "global travelers", "global travellers", "overseas travelers", "overseas tourists"],
+    "Arab travelers": ["arab", "arabs"],
+    "African travelers": ["african", "africa"],
+    "Latino / Hispanic travelers": ["latino", "latina", "latinx", "hispanic"],
+    "Black travelers": ["black travelers", "black tourists", "african american", "african-american"],
+    "White travelers": ["white travelers", "white tourists", "caucasian"],
+    "Asian travelers": ["asian travelers", "asian tourists", "south asian", "east asian", "southeast asian"],
+    "Indigenous travelers": ["indigenous", "native american", "first nations"],
+    "Multiracial travelers": ["multiracial", "mixed race"],
+    "Diaspora travelers": ["diaspora", "diaspora tourism", "heritage trip", "roots travel"],
+    "Muslim travelers": ["muslim travelers", "halal travel", "halal tourism"],
+    "Jewish travelers": ["jewish travelers", "jewish tourism"],
+    "LGBTQ+ travelers": ["lgbtq", "lgbtq+", "queer travelers", "gay travelers", "inclusive travel"],
+    "Diverse / multicultural travelers": ["diverse travelers", "multicultural travelers", "underrepresented travelers", "minority travelers", "inclusive audiences"],
 }
-
 DEFAULT_TAXONOMY = {
     "fields": {
         "Research Type": {"rules": {}},
@@ -1456,62 +1463,83 @@ def classify_traveler_market(text: str) -> Tuple[str, str, int]:
     return "; ".join(selected), "; ".join(evidence[:20]), confidence
 
 def extract_ethnicity_focus(pages: List[Dict[str, Any]]) -> Tuple[str, str, Optional[int], int]:
+    """
+    Detect explicit ethnicity, nationality, source-market, regional-audience, or cultural identity focus.
+    Conservative enough to avoid hallucination, but no longer requires the literal word ethnicity/nationality.
+    """
     found: List[str] = []
     evidence_snip = ""
     evidence_page = None
     counts: Dict[str, int] = {}
 
-    strong_context_terms = [
-        "ethnicity",
-        "ethnic",
-        "nationality",
-        "nationalities",
-        "race",
-        "racial",
-        "demographic",
-        "respondents",
-        "surveyed",
-        "sample included",
-        "traveler groups",
-        "segment",
-        "segments",
+    source_market_context_terms = [
+        "traveler", "travelers", "traveller", "travellers", "tourist", "tourists",
+        "guest", "guests", "respondent", "respondents", "adults", "market",
+        "source market", "outbound", "inbound", "visitor", "visitors", "segment",
+        "audience", "consumer", "consumers", "residents", "population", "sample",
+        "research", "survey",
     ]
 
+    identity_context_terms = [
+        "ethnicity", "ethnic", "nationality", "nationalities", "race", "racial",
+        "cultural", "culture", "identity", "diaspora", "minority", "multicultural",
+        "inclusive", "religious", "faith", "halal", "lgbtq", "queer",
+    ]
+
+    all_sentences: List[Tuple[int, str]] = []
     for p in pages:
-        sentences = [clean_text(s) for s in re.split(r"(?<=[.!?])\s+", normalize_block(p["text"])) if clean_text(s)]
-        for s in sentences:
-            low = s.lower()
+        text_sentences = [clean_text(s) for s in re.split(r"(?<=[.!?])\\s+", normalize_block(p["text"])) if clean_text(s)]
+        line_sentences = [clean_text(ln.get("text", "")) for ln in p.get("lines", []) if clean_text(ln.get("text", ""))]
+        for s in text_sentences + line_sentences:
+            all_sentences.append((p["page"], s))
 
-            if len(s) < 15 or len(s) > 240:
-                continue
-            if _is_toc_line(s) or URL_PAT.search(s):
-                continue
-            if re.search(r"\(\w.+?,\s*\d{4}", s):
-                continue
+    for page_no, s in all_sentences:
+        low = s.lower()
 
-            has_context = any(term in low for term in strong_context_terms)
-            if not has_context:
-                continue
+        if len(s) < 5 or len(s) > 280:
+            continue
+        if _is_toc_line(s) or URL_PAT.search(s):
+            continue
+        if re.search(r"\\(\\w.+?,\\s*\\d{4}", s):
+            continue
 
-            matched_here = []
-            for canon, aliases in ETHNICITY_FOCUS_MAP.items():
-                if any(re.search(rf"\b{re.escape(alias.lower())}\b", low) for alias in aliases):
+        has_context = any(term in low for term in source_market_context_terms + identity_context_terms)
+
+        matched_here = []
+        for canon, aliases in ETHNICITY_FOCUS_MAP.items():
+            for alias in aliases:
+                pattern = rf"(?<![a-z0-9]){re.escape(alias.lower())}(?![a-z0-9])"
+                if re.search(pattern, low):
                     matched_here.append(canon)
+                    break
 
-            if matched_here:
-                for item in matched_here:
+        if matched_here:
+            for item in matched_here:
+                if has_context or any(k in item.lower() for k in ["travelers", "international", "european", "middle eastern"]):
                     counts[item] = counts.get(item, 0) + 1
                     if item not in found:
                         found.append(item)
-                if not evidence_snip:
-                    evidence_snip = s
-                    evidence_page = p["page"]
 
-    robust = [k for k, v in counts.items() if v >= 2]
-    if robust:
-        return "; ".join(robust[:8]), evidence_snip or "; ".join(robust[:3]), evidence_page, 92
+            if not evidence_snip and found:
+                evidence_snip = s
+                evidence_page = page_no
 
-    return "Not specified", "No strong ethnicity/nationality analytical focus found", None, 92
+    selected = [item for item in found if counts.get(item, 0) >= 1]
+
+    narrow = [x for x in selected if x not in {"International travelers", "European travelers", "Diverse / multicultural travelers"}]
+    if narrow:
+        selected = narrow + [
+            x for x in selected
+            if x in {"International travelers", "European travelers", "Diverse / multicultural travelers"}
+            and counts.get(x, 0) >= 2
+        ]
+
+    selected = _dedupe_keep_order(selected)[:8]
+
+    if selected:
+        return "; ".join(selected), evidence_snip or "; ".join(selected[:3]), evidence_page, 88
+
+    return "Not specified", "No explicit nationality, ethnicity, source-market, or cultural-audience focus found", None, 88
 
 
 def extract_sample_and_methodology_rule(
@@ -2295,6 +2323,8 @@ def llm_crosscheck_crm_fields(client: Any, model: str, fallback_model: str, page
         "- DESTINATION_FOCUS is the destination/region being analyzed.\\n"
         "- TRAVELER_MARKET means traveler segment/type, e.g. Luxury Travelers, Wellness Travelers, Adventure Travelers, Family Travelers, Business Travelers.\\n"
         "- TRAVELER_MARKET is NOT source country or nationality; do not return values like Germany, France, UK, USA.\\n"
+        "- Ethnicity Focus should capture explicit nationality, source-market, regional audience, ethnicity, cultural identity, or demographic audience signals. Examples: American travelers, German travelers, European travelers, GCC travelers, Black travelers, Muslim travelers, LGBTQ+ travelers.\\n"
+        "- If the document mentions a statistic like '29% of Americans use AI for travel research', Ethnicity Focus should include American travelers.\\n"
         "- Keep all clearly mentioned traveler segments; do not limit to one.\\n"
         "- If no traveler segment is clear, return the draft value or Not specified.\\n"
         "- corrections.Title, corrections.Publisher and corrections.Date should be corrected only if clearly wrong; otherwise return the draft value.\\n"

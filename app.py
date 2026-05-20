@@ -216,7 +216,7 @@ def _teable_endpoint(path: str) -> str:
 
 
 
-def list_teable_records(limit: int = 100) -> List[Dict[str, Any]]:
+def list_teable_records(limit: int = 50) -> List[Dict[str, Any]]:
     table_id = get_secret("TEABLE_TABLE_ID")
     if not table_id:
         return []
@@ -224,10 +224,10 @@ def list_teable_records(limit: int = 100) -> List[Dict[str, Any]]:
     endpoint = _teable_endpoint(f"/api/table/{table_id}/record")
     params = {
         "fieldKeyType": "name",
-        "take": str(limit),
+        "take": str(min(limit, 50)),
     }
 
-    response = requests.get(endpoint, headers=_teable_headers(), params=params, timeout=30)
+    response = requests.get(endpoint, headers=_teable_headers(), params=params, timeout=60)
     if response.status_code >= 400:
         return []
 
@@ -243,7 +243,7 @@ def find_duplicate_in_teable(final_row: Dict[str, Any], source_url: str = "") ->
     if not title and not url:
         return None
 
-    for record in list_teable_records(limit=150):
+    for record in list_teable_records(limit=40):
         fields = record.get("fields", {}) if isinstance(record, dict) else {}
         existing_title = str(fields.get("Title", "")).strip().lower()
         existing_url = str(fields.get("Source URL", "")).strip().lower()
@@ -752,8 +752,15 @@ def main():
 
         duplicate = None
         if teable_token and teable_table_id:
-            with st.spinner("Checking for duplicates in Teable..."):
-                duplicate = find_duplicate_in_teable(edited_row, effective_source_url)
+            try:
+                with st.spinner("Checking for duplicates in Teable..."):
+                    duplicate = find_duplicate_in_teable(edited_row, effective_source_url)
+            except requests.exceptions.ReadTimeout:
+                st.warning("Duplicate check timed out, so it was skipped for this send. You can still send the record.")
+                duplicate = None
+            except Exception as e:
+                st.warning(f"Duplicate check could not run, so it was skipped: {e}")
+                duplicate = None
 
         if duplicate:
             st.warning("Possible duplicate found in Teable. Same title or source URL already exists.")
