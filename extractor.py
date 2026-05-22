@@ -2119,22 +2119,42 @@ def generate_basic_summary_fallback(row: Dict[str, str]) -> str:
 def extract_key_statistics(text: str, max_items: int = 8) -> str:
     candidates = []
     sentences = [clean_text(s) for s in re.split(r"(?<=[.!?])\s+", normalize_block(text)) if clean_text(s)]
+    bad_markers = [
+        "restricted", "confidential", "legend", "copyright", "all rights reserved",
+        "table of contents", "page ", "mews.com", "source:", "click here"
+    ]
+
     for s in sentences:
-        if _is_bad_data_sentence(s) or not NUMERIC_PAT.search(s):
+        if _is_bad_data_sentence(s):
             continue
         low = s.lower()
+        if any(b in low for b in bad_markers):
+            continue
+        if not NUMERIC_PAT.search(s):
+            continue
+        if len(s) < 45 or len(s) > 260:
+            continue
+        # Avoid OCR/table fragments with too many numbers and too few words.
+        words = re.findall(r"[A-Za-zΑ-Ωα-ω]{3,}", s)
+        nums = NUMERIC_PAT.findall(s)
+        if len(nums) > 7 and len(words) < 18:
+            continue
+        if len(words) < 8:
+            continue
+
         score = 0
         if "%" in s:
             score += 5
         if any(k in low for k in ["score", "rated", "likelihood", "impact", "desirability", "respondents", "experts", "travelers", "travellers", "budget", "spend", "increase", "decrease"]):
             score += 4
-        if 45 <= len(s) <= 240:
-            score += 2
+        if any(k in low for k in ["tourism", "travel", "hotel", "guest", "booking", "market", "consumer"]):
+            score += 3
         candidates.append((score, s))
+
     candidates.sort(key=lambda x: x[0], reverse=True)
     out, seen = [], set()
     for _, s in candidates:
-        key = s[:90].lower()
+        key = re.sub(r"\W+", " ", s[:120].lower()).strip()
         if key in seen:
             continue
         seen.add(key)
@@ -2510,6 +2530,123 @@ def llm_generate_conclusion_summary(client: Any, model: str, fallback_model: str
     if last_err:
         raise last_err
     return "Not specified", ""
+
+def _quality_pass_schema() -> Dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "client_ready_insight": {"type": "string"},
+            "content_ideas": {"type": "array", "items": {"type": "string"}},
+            "key_statistics": {"type": "array", "items": {"type": "string"}},
+            "useful_for": {"type": "array", "items": {"type": "string"}},
+            "relevant_client_types": {"type": "array", "items": {"type": "string"}},
+            "trend_strength": {"type": "string"},
+            "research_value_score": {"type": "integer"},
+        },
+        "required": [
+            "client_ready_insight",
+            "content_ideas",
+            "key_statistics",
+            "useful_for",
+            "relevant_client_types",
+            "trend_strength",
+            "research_value_score",
+        ],
+    }
+
+
+def _safe_join_list(value: Any) -> str:
+    if isinstance(value, list):
+        cleaned = [clean_text(str(v)) for v in value if clean_text(str(v))]
+        return "\n".join(f"• {v}" for v in cleaned) if cleaned else "Not specified"
+    return normalize_bullet_block(str(value or ""))
+
+
+def _safe_join_select(value: Any) -> str:
+    if isinstance(value, list):
+        cleaned = [clean_text(str(v)) for v in value if clean_text(str(v)) and clean_text(str(v)).lower() != "not specified"]
+        return "; ".join(_dedupe_keep_order(cleaned)) if cleaned else "Not specified"
+    return clean_text(str(value or "")) or "Not specified"
+
+
+
+def build_context(pages: List[Dict[str, Any]], max_chars: int = 22000) -> str:
+    chunks = []
+    total = 0
+    for p in pages:
+        page_no = p.get("page", "")
+        page_text = clean_text(p.get("text", ""))
+        if not page_text:
+            continue
+        chunk = f"Page {page_no}:\n{page_text}"
+        if total + len(chunk) > max_chars:
+            remaining = max_chars - total
+            if remaining > 500:
+                chunks.append(chunk[:remaining])
+            break
+        chunks.append(chunk)
+        total += len(chunk)
+    return "\n\n".join(chunks)
+
+def llm_quality_pass(
+    client: Any,
+    model: str,
+    fallback_model: str,
+    pages: List[Dict[str, Any]],
+    row: Dict[str, str],
+) -> Tuple[Dict[str, str], str]:
+    """Use Gemini to clean noisy rule-based client-intelligence fields."""
+    context = build_context(pages, max_chars=22000)
+    draft_json = json.dumps(row, ensure_ascii=False, indent=2)
+
+    prompt = (
+        "You are cleaning extracted tourism/hospitality research fields before saving them to a database. "
+        "Your job is to remove OCR/table noise, rewrite broken fragments, and keep only useful, evidence-grounded outputs.\\n\\n"
+        "Clean these fields:\\n"
+        "1. client_ready_insight: one concise client-facing insight, 1-2 sentences, practical and non-technical. "
+        "It must be understandable if pasted into an email or client report. Do not use broken ranking/table fragments.\\n"
+        "2. key_statistics: 4-8 complete statistics. Each bullet must include a number AND enough context to understand what it means. "
+        "Reject table fragments, city lists, isolated percentages, confidentiality/footer text, and OCR garbage.\\n"
+        "3. content_ideas: 3-6 practical content/campaign/SEO/social/PR/strategy ideas based on the source.\\n"
+        "4. useful_for: choose only from: SEO, Social Media, Paid Ads, Content Strategy, Branding, PR, Email Marketing, Market Research, Client Proposal, Strategy Deck, Website Content, Campaign Planning.\\n"
+        "5. relevant_client_types: choose only from: Hotels, Luxury Hotels, Villas, DMOs, Tour Operators, Travel Agencies, Restaurants, Cruises, Airlines, Car Rentals, Experiences Providers.\\n"
+        "6. trend_strength: choose exactly one: Weak Signal, Growing Trend, Strong Trend, Market Shift.\\n"
+        "7. research_value_score: integer 0-100 based on recency, data richness, strategic value, marketing usefulness, and source quality.\\n\\n"
+        "Rules:\\n"
+        "- Use only evidence from the document excerpts or the draft extraction.\\n"
+        "- Prefer fewer clean statistics over many noisy ones.\\n"
+        "- If a field cannot be produced reliably, return 'Not specified' or an empty array where appropriate.\\n"
+        "- Do not include boilerplate, legal disclaimers, page footers, confidentiality text, or random tables.\\n\\n"
+        f"Draft extraction:\\n{draft_json}\\n\\n"
+        f"Document excerpts:\\n{context}"
+    )
+
+    schema = _quality_pass_schema()
+    try:
+        data, used_model = _chat_json(client, model, prompt, schema, temperature=0.1)
+    except Exception:
+        data, used_model = _chat_json(client, fallback_model, prompt, schema, temperature=0.1)
+
+    cleaned = {
+        "Client-ready Insight": clean_text(data.get("client_ready_insight", "")) or "Not specified",
+        "Content Ideas": _safe_join_list(data.get("content_ideas", [])),
+        "Key Statistics": _safe_join_list(data.get("key_statistics", [])),
+        "Useful For": _safe_join_select(data.get("useful_for", [])),
+        "Relevant Client Types": _safe_join_select(data.get("relevant_client_types", [])),
+        "Trend Strength": clean_text(data.get("trend_strength", "")) or row.get("Trend Strength", "Growing Trend"),
+        "Research Value Score": str(data.get("research_value_score", row.get("Research Value Score", 0))),
+    }
+
+    if cleaned["Trend Strength"] not in {"Weak Signal", "Growing Trend", "Strong Trend", "Market Shift"}:
+        cleaned["Trend Strength"] = row.get("Trend Strength", "Growing Trend") or "Growing Trend"
+
+    try:
+        score = int(float(cleaned["Research Value Score"]))
+        cleaned["Research Value Score"] = str(max(0, min(100, score)))
+    except Exception:
+        cleaned["Research Value Score"] = str(row.get("Research Value Score", "70"))
+
+    return cleaned, used_model
 
 def llm_generate_summary(client: Any, model: str, fallback_model: str, pages_for_llm: List[Dict[str, Any]], draft_row: Dict[str, str]) -> Tuple[str, str]:
     context = "\n\n".join(_make_page_brief(p, max_chars=1400) for p in pages_for_llm)[:12000]
@@ -2949,6 +3086,36 @@ def build_output(pages: List[Dict[str, Any]], source_url: str = "", pdf_path: st
     row["Sample"] = clean_text(row.get("Sample", "")) or "Not specified"
     row["Methodology"] = format_methodology_summary(row.get("Methodology", ""))
     row["Data Points"] = normalize_bullet_block(row.get("Data Points", ""))
+    # Final AI quality pass for client-facing fields.
+    # This removes OCR/table noise and rewrites noisy rule-based outputs into usable insights.
+    if client is not None:
+        try:
+            quality_fields, quality_model_used = llm_quality_pass(
+                client, model, fallback_model, llm_pages, row
+            )
+            for q_field, q_value in quality_fields.items():
+                row[q_field] = q_value
+                if q_field in reviews:
+                    reviews[q_field] = FieldReview(
+                        q_value,
+                        90 if q_value != "Not specified" else 65,
+                        "Gemini AI quality pass cleaned and validated this field",
+                        None,
+                        "gemini-quality-pass",
+                        q_value == "Not specified",
+                    )
+            llm_debug["calls"].append(
+                {
+                    "field_group": "client_intelligence_quality_pass",
+                    "model": quality_model_used,
+                    "pages": [p["page"] for p in llm_pages],
+                }
+            )
+            if not llm_model_used:
+                llm_model_used = quality_model_used
+        except Exception as exc:
+            llm_debug["quality_pass_error"] = str(exc)
+
     row["Summary"] = normalize_summary(row.get("Summary", ""))
     if row["Summary"] == "Not specified":
         row["Summary"] = generate_basic_summary_fallback(row)
