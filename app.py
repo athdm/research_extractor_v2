@@ -108,6 +108,42 @@ SOURCE_QUALITY_OPTIONS = [
     "Unclear",
 ]
 
+USEFUL_FOR_OPTIONS = [
+    "SEO",
+    "Social Media",
+    "Paid Ads",
+    "Content Strategy",
+    "Branding",
+    "PR",
+    "Email Marketing",
+    "Market Research",
+    "Client Proposal",
+    "Strategy Deck",
+    "Website Content",
+    "Campaign Planning",
+]
+
+RELEVANT_CLIENT_TYPES_OPTIONS = [
+    "Hotels",
+    "Luxury Hotels",
+    "Villas",
+    "DMOs",
+    "Tour Operators",
+    "Travel Agencies",
+    "Restaurants",
+    "Cruises",
+    "Airlines",
+    "Car Rentals",
+    "Experiences Providers",
+]
+
+TREND_STRENGTH_OPTIONS = [
+    "Weak Signal",
+    "Growing Trend",
+    "Strong Trend",
+    "Market Shift",
+]
+
 TEABLE_FIELD_MAP = {
     "Title": "Title",
     "Publisher": "Publisher",
@@ -121,6 +157,13 @@ TEABLE_FIELD_MAP = {
     "Data Points": "Data Points",
     "Summary": "Summary",
     "Conclusion": "Conclusion",
+    "Client-ready Insight": "Client-ready Insight",
+    "Content Ideas": "Content Ideas",
+    "Key Statistics": "Key Statistics",
+    "Useful For": "Useful For",
+    "Relevant Client Types": "Relevant Client Types",
+    "Trend Strength": "Trend Strength",
+    "Research Value Score": "Research Value Score",
 }
 
 OPTIONAL_TEABLE_FIELD_MAP = {
@@ -184,16 +227,56 @@ def _clean_teable_value(value: Any) -> Any:
     return text
 
 
+def _teable_multi_select_value(value: Any) -> List[str]:
+    """Convert app semicolon/comma/newline separated multi-values to a Teable multiple-select array."""
+    if value in ("", None):
+        return []
+    if isinstance(value, list):
+        return [str(v).strip() for v in value if str(v).strip() and str(v).strip().lower() != "not specified"]
+
+    text = str(value or "").strip()
+    if not text or text.lower() == "not specified":
+        return []
+
+    raw_parts = []
+    for chunk in text.replace("\n", ";").split(";"):
+        part = chunk.strip()
+        if part:
+            raw_parts.append(part)
+
+    if len(raw_parts) <= 1 and "," in text:
+        raw_parts = [p.strip() for p in text.split(",") if p.strip()]
+
+    deduped = []
+    seen = set()
+    for item in raw_parts:
+        if item.lower() == "not specified":
+            continue
+        key = item.lower()
+        if key not in seen:
+            seen.add(key)
+            deduped.append(item)
+    return deduped
+
 def build_teable_fields(final_row: Dict[str, Any], source_url: str = "") -> Dict[str, Any]:
     fields: Dict[str, Any] = {}
 
+    multiple_select_fields = {"Category", "Traveler Market", "Useful For", "Relevant Client Types"}
+
     for teable_field, app_field in TEABLE_FIELD_MAP.items():
-        fields[teable_field] = _clean_teable_value(final_row.get(app_field, ""))
+        value = final_row.get(app_field, "")
+        if teable_field in multiple_select_fields:
+            fields[teable_field] = _teable_multi_select_value(value)
+        else:
+            fields[teable_field] = _clean_teable_value(value)
 
     for teable_field, app_field in OPTIONAL_TEABLE_FIELD_MAP.items():
         value = final_row.get(app_field, "")
         if value not in ("", None):
-            fields[teable_field] = _clean_teable_value(value)
+            if teable_field in multiple_select_fields:
+                fields[teable_field] = _teable_multi_select_value(value)
+            else:
+                fields[teable_field] = _clean_teable_value(value)
 
     fields["Source URL"] = source_url.strip()
     fields["Created At"] = datetime.now(timezone.utc).isoformat()
@@ -216,7 +299,7 @@ def _teable_endpoint(path: str) -> str:
 
 
 
-def list_teable_records(limit: int = 50) -> List[Dict[str, Any]]:
+def list_teable_records(limit: int = 100) -> List[Dict[str, Any]]:
     table_id = get_secret("TEABLE_TABLE_ID")
     if not table_id:
         return []
@@ -224,10 +307,10 @@ def list_teable_records(limit: int = 50) -> List[Dict[str, Any]]:
     endpoint = _teable_endpoint(f"/api/table/{table_id}/record")
     params = {
         "fieldKeyType": "name",
-        "take": str(min(limit, 50)),
+        "take": str(limit),
     }
 
-    response = requests.get(endpoint, headers=_teable_headers(), params=params, timeout=60)
+    response = requests.get(endpoint, headers=_teable_headers(), params=params, timeout=30)
     if response.status_code >= 400:
         return []
 
@@ -243,7 +326,7 @@ def find_duplicate_in_teable(final_row: Dict[str, Any], source_url: str = "") ->
     if not title and not url:
         return None
 
-    for record in list_teable_records(limit=40):
+    for record in list_teable_records(limit=150):
         fields = record.get("fields", {}) if isinstance(record, dict) else {}
         existing_title = str(fields.get("Title", "")).strip().lower()
         existing_url = str(fields.get("Source URL", "")).strip().lower()
@@ -493,6 +576,52 @@ def render_editable_review(row: Dict[str, Any], metadata: Dict[str, Any]) -> Dic
         height=120,
         placeholder="Useful input, advice, campaign idea, content/social/SEO hint, or practical marketing hack from the source.",
     )
+
+    st.subheader("Client & research intelligence")
+    edited["Client-ready Insight"] = st.text_area(
+        "Client-ready Insight",
+        value=str(row.get("Client-ready Insight", "")),
+        height=110,
+        placeholder="Concise insight that can be sent to a client or used in a client-facing report.",
+    )
+    edited["Content Ideas"] = st.text_area(
+        "Content Ideas",
+        value=str(row.get("Content Ideas", "")),
+        height=130,
+        placeholder="Content, campaign, SEO, PR, social or strategy ideas.",
+    )
+    edited["Key Statistics"] = st.text_area(
+        "Key Statistics",
+        value=str(row.get("Key Statistics", "")),
+        height=130,
+        placeholder="Key statistics, percentages, scores or numeric findings.",
+    )
+
+    useful_default = [x for x in split_multi(row.get("Useful For", "")) if x in USEFUL_FOR_OPTIONS]
+    client_types_default = [x for x in split_multi(row.get("Relevant Client Types", "")) if x in RELEVANT_CLIENT_TYPES_OPTIONS]
+    edited["Useful For"] = join_multi(st.multiselect("Useful For", USEFUL_FOR_OPTIONS, default=useful_default))
+    edited["Relevant Client Types"] = join_multi(st.multiselect("Relevant Client Types", RELEVANT_CLIENT_TYPES_OPTIONS, default=client_types_default))
+
+    t_col1, t_col2 = st.columns(2)
+    with t_col1:
+        trend_default = normalize_choice(row.get("Trend Strength", ""), TREND_STRENGTH_OPTIONS, "Growing Trend")
+        edited["Trend Strength"] = st.selectbox(
+            "Trend Strength",
+            TREND_STRENGTH_OPTIONS,
+            index=TREND_STRENGTH_OPTIONS.index(trend_default),
+        )
+    with t_col2:
+        try:
+            score_default = int(float(row.get("Research Value Score", 0)))
+        except Exception:
+            score_default = 0
+        edited["Research Value Score"] = st.number_input(
+            "Research Value Score",
+            min_value=0,
+            max_value=100,
+            value=max(0, min(100, score_default)),
+            step=1,
+        )
 
     st.subheader("Workflow metadata")
     m1, m2, m3 = st.columns(3)
@@ -752,15 +881,8 @@ def main():
 
         duplicate = None
         if teable_token and teable_table_id:
-            try:
-                with st.spinner("Checking for duplicates in Teable..."):
-                    duplicate = find_duplicate_in_teable(edited_row, effective_source_url)
-            except requests.exceptions.ReadTimeout:
-                st.warning("Duplicate check timed out, so it was skipped for this send. You can still send the record.")
-                duplicate = None
-            except Exception as e:
-                st.warning(f"Duplicate check could not run, so it was skipped: {e}")
-                duplicate = None
+            with st.spinner("Checking for duplicates in Teable..."):
+                duplicate = find_duplicate_in_teable(edited_row, effective_source_url)
 
         if duplicate:
             st.warning("Possible duplicate found in Teable. Same title or source URL already exists.")

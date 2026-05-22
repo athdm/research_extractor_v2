@@ -58,6 +58,13 @@ DISPLAY_COLUMNS = [
     "Summary",
     "Conclusion",
     "Digital Marketing Insight",
+    "Client-ready Insight",
+    "Content Ideas",
+    "Key Statistics",
+    "Useful For",
+    "Relevant Client Types",
+    "Trend Strength",
+    "Research Value Score",
 ]
 
 FIELDS = DISPLAY_COLUMNS.copy()
@@ -310,49 +317,42 @@ DATA_TERMS = [
 ]
 
 ETHNICITY_FOCUS_MAP = {
-    "American travelers": ["american", "americans", "u.s. traveler", "u.s. travelers", "us traveler", "us travelers", "u.s. adults", "united states", "usa"],
-    "British travelers": ["british", "uk traveler", "uk travelers", "uk travellers", "britons", "united kingdom", "uk market"],
-    "German travelers": ["german", "germans", "germany", "german market"],
-    "Greek travelers": ["greek", "greeks", "greece", "greek market"],
-    "French travelers": ["french", "france", "french market"],
-    "Italian travelers": ["italian", "italians", "italy", "italian market"],
-    "Spanish travelers": ["spanish", "spain", "spanish market"],
-    "Portuguese travelers": ["portuguese", "portugal"],
-    "Dutch travelers": ["dutch", "netherlands"],
-    "Belgian travelers": ["belgian", "belgium"],
-    "Swiss travelers": ["swiss", "switzerland"],
-    "Austrian travelers": ["austrian", "austria"],
-    "Nordic travelers": ["nordic", "nordics", "scandinavian", "scandinavia"],
-    "Swedish travelers": ["swedish", "sweden"],
-    "Norwegian travelers": ["norwegian", "norway"],
-    "Danish travelers": ["danish", "denmark"],
-    "Finnish travelers": ["finnish", "finland"],
-    "Polish travelers": ["polish", "poland"],
-    "Czech travelers": ["czech", "czech republic"],
-    "Hungarian travelers": ["hungarian", "hungary"],
-    "Romanian travelers": ["romanian", "romania"],
-    "Turkish travelers": ["turkish", "turkey"],
-    "Chinese travelers": ["chinese", "china", "greater china", "china outbound"],
-    "Japanese travelers": ["japanese", "japan"],
-    "Korean travelers": ["korean", "koreans", "south korea"],
-    "Indian travelers": ["indian", "indians", "india", "india outbound"],
-    "Middle Eastern travelers": ["middle eastern", "middle east", "gcc travelers", "gcc tourists", "arab travelers", "arab tourists", "uae travelers", "saudi travelers"],
-    "European travelers": ["european travelers", "european travellers", "european tourists", "european residents", "intra-european", "intra-europe"],
-    "International travelers": ["international travelers", "international travellers", "global travelers", "global travellers", "overseas travelers", "overseas tourists"],
-    "Arab travelers": ["arab", "arabs"],
-    "African travelers": ["african", "africa"],
-    "Latino / Hispanic travelers": ["latino", "latina", "latinx", "hispanic"],
-    "Black travelers": ["black travelers", "black tourists", "african american", "african-american"],
-    "White travelers": ["white travelers", "white tourists", "caucasian"],
-    "Asian travelers": ["asian travelers", "asian tourists", "south asian", "east asian", "southeast asian"],
-    "Indigenous travelers": ["indigenous", "native american", "first nations"],
-    "Multiracial travelers": ["multiracial", "mixed race"],
-    "Diaspora travelers": ["diaspora", "diaspora tourism", "heritage trip", "roots travel"],
-    "Muslim travelers": ["muslim travelers", "halal travel", "halal tourism"],
-    "Jewish travelers": ["jewish travelers", "jewish tourism"],
-    "LGBTQ+ travelers": ["lgbtq", "lgbtq+", "queer travelers", "gay travelers", "inclusive travel"],
-    "Diverse / multicultural travelers": ["diverse travelers", "multicultural travelers", "underrepresented travelers", "minority travelers", "inclusive audiences"],
+    "American": ["american", "americans", "u.s. traveler", "u.s. travelers", "us traveler", "us travelers", "u.s. adults", "united states"],
+    "British": ["british", "uk traveler", "uk travelers", "united kingdom"],
+    "German": ["german", "germans", "germany"],
+    "Greek": ["greek", "greeks", "greece"],
+    "French": ["french", "france"],
+    "Italian": ["italian", "italians", "italy"],
+    "Spanish": ["spanish", "spain"],
+    "Portuguese": ["portuguese", "portugal"],
+    "Dutch": ["dutch", "netherlands"],
+    "Belgian": ["belgian", "belgium"],
+    "Swiss": ["swiss", "switzerland"],
+    "Austrian": ["austrian", "austria"],
+    "Nordic": ["nordic", "nordics"],
+    "Swedish": ["swedish", "sweden"],
+    "Norwegian": ["norwegian", "norway"],
+    "Danish": ["danish", "denmark"],
+    "Finnish": ["finnish", "finland"],
+    "Polish": ["polish", "poland"],
+    "Czech": ["czech", "czech republic"],
+    "Hungarian": ["hungarian", "hungary"],
+    "Romanian": ["romanian", "romania"],
+    "Turkish": ["turkish", "turkey"],
+    "Chinese": ["chinese", "china"],
+    "Japanese": ["japanese", "japan"],
+    "Korean": ["korean", "koreans", "south korea"],
+    "Indian": ["indian", "indians", "india"],
+    "Arab": ["arab", "arabs", "middle eastern"],
+    "African": ["african", "africa"],
+    "Latino / Hispanic": ["latino", "latina", "latinx", "hispanic"],
+    "Black": ["black", "african american", "african-american"],
+    "White": ["white", "caucasian"],
+    "Asian": ["asian", "south asian", "east asian", "southeast asian"],
+    "Indigenous": ["indigenous", "native american", "first nations"],
+    "Multiracial": ["multiracial", "mixed race"],
 }
+
 DEFAULT_TAXONOMY = {
     "fields": {
         "Research Type": {"rules": {}},
@@ -1463,83 +1463,62 @@ def classify_traveler_market(text: str) -> Tuple[str, str, int]:
     return "; ".join(selected), "; ".join(evidence[:20]), confidence
 
 def extract_ethnicity_focus(pages: List[Dict[str, Any]]) -> Tuple[str, str, Optional[int], int]:
-    """
-    Detect explicit ethnicity, nationality, source-market, regional-audience, or cultural identity focus.
-    Conservative enough to avoid hallucination, but no longer requires the literal word ethnicity/nationality.
-    """
     found: List[str] = []
     evidence_snip = ""
     evidence_page = None
     counts: Dict[str, int] = {}
 
-    source_market_context_terms = [
-        "traveler", "travelers", "traveller", "travellers", "tourist", "tourists",
-        "guest", "guests", "respondent", "respondents", "adults", "market",
-        "source market", "outbound", "inbound", "visitor", "visitors", "segment",
-        "audience", "consumer", "consumers", "residents", "population", "sample",
-        "research", "survey",
+    strong_context_terms = [
+        "ethnicity",
+        "ethnic",
+        "nationality",
+        "nationalities",
+        "race",
+        "racial",
+        "demographic",
+        "respondents",
+        "surveyed",
+        "sample included",
+        "traveler groups",
+        "segment",
+        "segments",
     ]
 
-    identity_context_terms = [
-        "ethnicity", "ethnic", "nationality", "nationalities", "race", "racial",
-        "cultural", "culture", "identity", "diaspora", "minority", "multicultural",
-        "inclusive", "religious", "faith", "halal", "lgbtq", "queer",
-    ]
-
-    all_sentences: List[Tuple[int, str]] = []
     for p in pages:
-        text_sentences = [clean_text(s) for s in re.split(r"(?<=[.!?])\\s+", normalize_block(p["text"])) if clean_text(s)]
-        line_sentences = [clean_text(ln.get("text", "")) for ln in p.get("lines", []) if clean_text(ln.get("text", ""))]
-        for s in text_sentences + line_sentences:
-            all_sentences.append((p["page"], s))
+        sentences = [clean_text(s) for s in re.split(r"(?<=[.!?])\s+", normalize_block(p["text"])) if clean_text(s)]
+        for s in sentences:
+            low = s.lower()
 
-    for page_no, s in all_sentences:
-        low = s.lower()
+            if len(s) < 15 or len(s) > 240:
+                continue
+            if _is_toc_line(s) or URL_PAT.search(s):
+                continue
+            if re.search(r"\(\w.+?,\s*\d{4}", s):
+                continue
 
-        if len(s) < 5 or len(s) > 280:
-            continue
-        if _is_toc_line(s) or URL_PAT.search(s):
-            continue
-        if re.search(r"\(\w.+?,\s*\d{4}", s):
-            continue
+            has_context = any(term in low for term in strong_context_terms)
+            if not has_context:
+                continue
 
-        has_context = any(term in low for term in source_market_context_terms + identity_context_terms)
-
-        matched_here = []
-        for canon, aliases in ETHNICITY_FOCUS_MAP.items():
-            for alias in aliases:
-                pattern = rf"(?<![a-z0-9]){re.escape(alias.lower())}(?![a-z0-9])"
-                if re.search(pattern, low):
+            matched_here = []
+            for canon, aliases in ETHNICITY_FOCUS_MAP.items():
+                if any(re.search(rf"\b{re.escape(alias.lower())}\b", low) for alias in aliases):
                     matched_here.append(canon)
-                    break
 
-        if matched_here:
-            for item in matched_here:
-                if has_context or any(k in item.lower() for k in ["travelers", "international", "european", "middle eastern"]):
+            if matched_here:
+                for item in matched_here:
                     counts[item] = counts.get(item, 0) + 1
                     if item not in found:
                         found.append(item)
+                if not evidence_snip:
+                    evidence_snip = s
+                    evidence_page = p["page"]
 
-            if not evidence_snip and found:
-                evidence_snip = s
-                evidence_page = page_no
+    robust = [k for k, v in counts.items() if v >= 2]
+    if robust:
+        return "; ".join(robust[:8]), evidence_snip or "; ".join(robust[:3]), evidence_page, 92
 
-    selected = [item for item in found if counts.get(item, 0) >= 1]
-
-    narrow = [x for x in selected if x not in {"International travelers", "European travelers", "Diverse / multicultural travelers"}]
-    if narrow:
-        selected = narrow + [
-            x for x in selected
-            if x in {"International travelers", "European travelers", "Diverse / multicultural travelers"}
-            and counts.get(x, 0) >= 2
-        ]
-
-    selected = _dedupe_keep_order(selected)[:8]
-
-    if selected:
-        return "; ".join(selected), evidence_snip or "; ".join(selected[:3]), evidence_page, 88
-
-    return "Not specified", "No explicit nationality, ethnicity, source-market, or cultural-audience focus found", None, 88
+    return "Not specified", "No strong ethnicity/nationality analytical focus found", None, 92
 
 
 def extract_sample_and_methodology_rule(
@@ -2137,6 +2116,161 @@ def generate_basic_summary_fallback(row: Dict[str, str]) -> str:
     summary = " ".join(parts).strip()
     return summary if summary else "Not specified"
 
+def extract_key_statistics(text: str, max_items: int = 8) -> str:
+    candidates = []
+    sentences = [clean_text(s) for s in re.split(r"(?<=[.!?])\s+", normalize_block(text)) if clean_text(s)]
+    for s in sentences:
+        if _is_bad_data_sentence(s) or not NUMERIC_PAT.search(s):
+            continue
+        low = s.lower()
+        score = 0
+        if "%" in s:
+            score += 5
+        if any(k in low for k in ["score", "rated", "likelihood", "impact", "desirability", "respondents", "experts", "travelers", "travellers", "budget", "spend", "increase", "decrease"]):
+            score += 4
+        if 45 <= len(s) <= 240:
+            score += 2
+        candidates.append((score, s))
+    candidates.sort(key=lambda x: x[0], reverse=True)
+    out, seen = [], set()
+    for _, s in candidates:
+        key = s[:90].lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(f"• {s}")
+        if len(out) >= max_items:
+            break
+    return "\n".join(out) if out else "Not specified"
+
+
+def classify_useful_for(text: str, category: str = "", digital_marketing_insight: str = "") -> str:
+    combined = f"{text}\n{category}\n{digital_marketing_insight}".lower()
+    mapping = {
+        "SEO": ["seo", "search", "google", "ai overview", "discoverability", "visibility", "structured data", "schema.org"],
+        "Social Media": ["social media", "instagram", "tiktok", "creator", "influencer", "content", "social ads"],
+        "Paid Ads": ["paid ads", "advertising", "social ads", "ppc", "campaign", "targeting"],
+        "Content Strategy": ["content", "storytelling", "blog", "article", "q&a", "questions", "inspiration"],
+        "Branding": ["brand", "loyalty", "positioning", "identity", "brand promise", "reputation"],
+        "PR": ["press", "media", "pr", "public relations", "trend", "market shift"],
+        "Email Marketing": ["email", "newsletter", "crm", "guest profiles", "loyalty"],
+        "Market Research": ["market", "research", "survey", "respondents", "experts", "forecast", "outlook"],
+        "Client Proposal": ["opportunity", "recommendation", "strategy", "business value", "competitive advantage"],
+        "Strategy Deck": ["strategy", "roadmap", "checklist", "take action", "business model", "decision-making"],
+        "Website Content": ["website", "content", "faq", "factsheet", "guest-facing content", "structured fields"],
+        "Campaign Planning": ["campaign", "audience", "segment", "target", "promote", "marketing"],
+    }
+    selected = [label for label, kws in mapping.items() if any(k in combined for k in kws)]
+    if not selected and clean_text(digital_marketing_insight).lower() != "not specified":
+        selected = ["Content Strategy", "Campaign Planning"]
+    return "; ".join(_dedupe_keep_order(selected)) if selected else "Not specified"
+
+
+def classify_relevant_client_types(text: str, category: str = "") -> str:
+    combined = f"{text}\n{category}".lower()
+    mapping = {
+        "Hotels": ["hotel", "hotels", "hospitality", "guest journey", "pms", "front desk", "check-in"],
+        "Luxury Hotels": ["luxury", "upscale", "premium", "high-touch", "concierge"],
+        "Villas": ["villa", "villas", "luxury villa", "vacation rental"],
+        "DMOs": ["dmo", "destination", "tourism board", "destination marketing", "regional", "city"],
+        "Tour Operators": ["tour operator", "tours", "itinerary", "package", "activities", "experiences"],
+        "Travel Agencies": ["travel agency", "travel agencies", "agent", "booking", "ota"],
+        "Restaurants": ["restaurant", "restaurants", "dining", "food", "f&b", "culinary"],
+        "Cruises": ["cruise", "cruises", "ship", "small ships"],
+        "Airlines": ["airline", "airlines", "flight", "flights", "airport", "aviation"],
+        "Car Rentals": ["rental car", "car rental", "self-drive", "road trip"],
+        "Experiences Providers": ["experience", "experiences", "activities", "guided tour", "food tour", "spa", "wellness", "local tour"],
+    }
+    selected = [label for label, kws in mapping.items() if any(k in combined for k in kws)]
+    return "; ".join(_dedupe_keep_order(selected)) if selected else "Not specified"
+
+
+def classify_trend_strength(text: str, data_points: str = "", conclusion: str = "") -> str:
+    combined = f"{text[:30000]}\n{data_points}\n{conclusion}".lower()
+    score = 0
+    if any(k in combined for k in ["market shift", "turning point", "redefine", "transforming", "will change forever", "future of"]):
+        score += 4
+    if any(k in combined for k in ["growing", "increasing", "rising", "emerging", "rapid rise", "accelerating"]):
+        score += 3
+    if any(k in combined for k in ["strong consensus", "very high", "major", "significant", "critical", "essential"]):
+        score += 3
+    if len(NUMERIC_PAT.findall(combined)) >= 5:
+        score += 2
+    if any(k in combined for k in ["2026", "2030", "2035", "next 10 years"]):
+        score += 1
+    if score >= 8:
+        return "Market Shift"
+    if score >= 5:
+        return "Strong Trend"
+    if score >= 3:
+        return "Growing Trend"
+    return "Weak Signal"
+
+
+def compute_research_value_score(row: Dict[str, str]) -> str:
+    score = 40
+    for field, points in [
+        ("Data Points", 12),
+        ("Key Statistics", 12),
+        ("Summary", 8),
+        ("Digital Marketing Insight", 10),
+        ("Client-ready Insight", 8),
+        ("Methodology", 5),
+    ]:
+        value = clean_text(row.get(field, ""))
+        if value and value.lower() != "not specified":
+            score += points
+    trend = row.get("Trend Strength", "")
+    if trend == "Market Shift":
+        score += 10
+    elif trend == "Strong Trend":
+        score += 7
+    elif trend == "Growing Trend":
+        score += 4
+    return str(max(0, min(100, score)))
+
+
+def generate_client_ready_insight(row: Dict[str, str]) -> str:
+    for field in ["Digital Marketing Insight", "Conclusion"]:
+        value = clean_text(row.get(field, ""))
+        if value and value.lower() != "not specified":
+            return value
+    data_points = clean_text(row.get("Data Points", ""))
+    category = clean_text(row.get("CATEGORY", ""))
+    if data_points and data_points.lower() != "not specified":
+        first = data_points.replace("•", "").splitlines()[0].strip()
+        if first:
+            return f"This source provides useful evidence for {category}: {first}" if category.lower() != "not specified" else f"This source provides a useful client insight: {first}"
+    title = clean_text(row.get("Title", ""))
+    return f"This source can support client-facing research and strategy work around: {title}." if title and title.lower() != "not specified" else "Not specified"
+
+
+def generate_content_ideas(row: Dict[str, str]) -> str:
+    category = clean_text(row.get("CATEGORY", ""))
+    traveler_market = clean_text(row.get("TRAVELER_MARKET", ""))
+    destination = clean_text(row.get("DESTINATION_FOCUS", ""))
+    dm = clean_text(row.get("Digital Marketing Insight", ""))
+    ideas = []
+    audience = traveler_market if traveler_market.lower() != "not specified" else "target travelers"
+    dest = destination if destination.lower() != "not specified" else "the destination"
+    if "Technology & AI" in category or "AI" in dm:
+        ideas += [f"• Guide: How AI is changing travel planning for {audience}", "• Blog/social post: What hotels need to make their content AI-search ready"]
+    if "Wellness" in category:
+        ideas.append(f"• Campaign idea: Wellness-led itineraries for {audience}")
+    if "Food" in category or "Dining" in category:
+        ideas.append(f"• Content idea: Local food experiences and culinary routes in {dest}")
+    if "Adventure" in category:
+        ideas.append(f"• Content idea: Adventure experiences and active travel routes for {audience}")
+    if "Luxury" in category:
+        ideas.append("• Campaign idea: Premium, personalized travel experiences with high-touch service")
+    if "Booking Trends" in category or "Travel Planning" in category:
+        ideas.append("• Website/SEO idea: Create clear Q&A content for common booking and planning questions")
+    if not ideas and dm and dm.lower() != "not specified":
+        ideas.append(f"• Turn this insight into a short client newsletter or LinkedIn post: {dm[:220]}")
+    if not ideas:
+        ideas.append("• Use this source as supporting evidence in a client research summary or strategy deck.")
+    return "\n".join(_dedupe_keep_order(ideas)) if ideas else "Not specified"
+
 # =========================================================
 # Gemini helpers
 # =========================================================
@@ -2323,8 +2457,6 @@ def llm_crosscheck_crm_fields(client: Any, model: str, fallback_model: str, page
         "- DESTINATION_FOCUS is the destination/region being analyzed.\\n"
         "- TRAVELER_MARKET means traveler segment/type, e.g. Luxury Travelers, Wellness Travelers, Adventure Travelers, Family Travelers, Business Travelers.\\n"
         "- TRAVELER_MARKET is NOT source country or nationality; do not return values like Germany, France, UK, USA.\\n"
-        "- Ethnicity Focus should capture explicit nationality, source-market, regional audience, ethnicity, cultural identity, or demographic audience signals. Examples: American travelers, German travelers, European travelers, GCC travelers, Black travelers, Muslim travelers, LGBTQ+ travelers.\\n"
-        "- If the document mentions a statistic like '29% of Americans use AI for travel research', Ethnicity Focus should include American travelers.\\n"
         "- Keep all clearly mentioned traveler segments; do not limit to one.\\n"
         "- If no traveler segment is clear, return the draft value or Not specified.\\n"
         "- corrections.Title, corrections.Publisher and corrections.Date should be corrected only if clearly wrong; otherwise return the draft value.\\n"
@@ -2617,6 +2749,27 @@ def build_output(pages: List[Dict[str, Any]], source_url: str = "", pdf_path: st
     row["Digital Marketing Insight"] = dm_rule
     reviews["Digital Marketing Insight"] = FieldReview(dm_rule, conf, ev, None, "rule", conf < 85)
 
+    row["Key Statistics"] = extract_key_statistics(text)
+    reviews["Key Statistics"] = FieldReview(row["Key Statistics"], 82 if row["Key Statistics"] != "Not specified" else 65, "Rule-based statistics extraction", None, "rule", row["Key Statistics"] == "Not specified")
+
+    row["Client-ready Insight"] = generate_client_ready_insight(row)
+    reviews["Client-ready Insight"] = FieldReview(row["Client-ready Insight"], 78 if row["Client-ready Insight"] != "Not specified" else 65, "Generated from extracted insights", None, "rule", row["Client-ready Insight"] == "Not specified")
+
+    row["Content Ideas"] = generate_content_ideas(row)
+    reviews["Content Ideas"] = FieldReview(row["Content Ideas"], 78 if row["Content Ideas"] != "Not specified" else 65, "Generated from extracted categories and insights", None, "rule", row["Content Ideas"] == "Not specified")
+
+    row["Useful For"] = classify_useful_for(text, row.get("CATEGORY", ""), row.get("Digital Marketing Insight", ""))
+    reviews["Useful For"] = FieldReview(row["Useful For"], 82 if row["Useful For"] != "Not specified" else 65, "Rule-based usefulness classification", None, "rule", row["Useful For"] == "Not specified")
+
+    row["Relevant Client Types"] = classify_relevant_client_types(text, row.get("CATEGORY", ""))
+    reviews["Relevant Client Types"] = FieldReview(row["Relevant Client Types"], 82 if row["Relevant Client Types"] != "Not specified" else 65, "Rule-based client type classification", None, "rule", row["Relevant Client Types"] == "Not specified")
+
+    row["Trend Strength"] = classify_trend_strength(text, row.get("Data Points", ""), row.get("Conclusion", ""))
+    reviews["Trend Strength"] = FieldReview(row["Trend Strength"], 78, "Rule-based trend strength classification", None, "rule", False)
+
+    row["Research Value Score"] = compute_research_value_score(row)
+    reviews["Research Value Score"] = FieldReview(row["Research Value Score"], 75, "Rule-based value scoring", None, "rule", False)
+
     llm_used = False
     llm_error = ""
     llm_debug: Dict[str, Any] = {
@@ -2810,6 +2963,13 @@ def build_output(pages: List[Dict[str, Any]], source_url: str = "", pdf_path: st
             )
     row["Conclusion"] = normalize_conclusion_or_summary(row.get("Conclusion", ""))
     row["Digital Marketing Insight"] = clean_text(row.get("Digital Marketing Insight", "")) or "Not specified"
+    row["Key Statistics"] = normalize_bullet_block(row.get("Key Statistics", ""))
+    row["Client-ready Insight"] = clean_text(row.get("Client-ready Insight", "")) or generate_client_ready_insight(row)
+    row["Content Ideas"] = normalize_bullet_block(row.get("Content Ideas", ""))
+    row["Useful For"] = clean_text(row.get("Useful For", "")) or classify_useful_for(text, row.get("CATEGORY", ""), row.get("Digital Marketing Insight", ""))
+    row["Relevant Client Types"] = clean_text(row.get("Relevant Client Types", "")) or classify_relevant_client_types(text, row.get("CATEGORY", ""))
+    row["Trend Strength"] = clean_text(row.get("Trend Strength", "")) or classify_trend_strength(text, row.get("Data Points", ""), row.get("Conclusion", ""))
+    row["Research Value Score"] = compute_research_value_score(row)
 
     for field in FIELDS:
         row[field] = str(row.get(field, "")).strip() or "Not specified"
