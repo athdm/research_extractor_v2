@@ -157,6 +157,8 @@ TEABLE_FIELD_MAP = {
     "Data Points": "Data Points",
     "Summary": "Summary",
     "Conclusion": "Conclusion",
+    "Digital Marketing Insight": "Digital Marketing Insight",
+    "Usefulness": "Usefulness",
     "Client-ready Insight": "Client-ready Insight",
     "Content Ideas": "Content Ideas",
     "Key Statistics": "Key Statistics",
@@ -168,7 +170,6 @@ TEABLE_FIELD_MAP = {
 
 OPTIONAL_TEABLE_FIELD_MAP = {
     "Ethnicity Focus": "Ethnicity Focus",
-    "Digital Marketing Insight": "Digital Marketing Insight",
     "PDF Source URL": "PDF Source URL",
     "PDF File Name": "PDF File Name",
     "Source Type": "Source Type",
@@ -178,7 +179,6 @@ OPTIONAL_TEABLE_FIELD_MAP = {
     "Needs Review Count": "Needs Review Count",
     "Status": "Status",
     "Source Quality": "Source Quality",
-    "Usefulness": "Usefulness",
     "Reviewer Notes": "Reviewer Notes",
 }
 
@@ -259,6 +259,19 @@ def _teable_multi_select_value(value: Any) -> List[str]:
     return deduped
 
 def build_teable_fields(final_row: Dict[str, Any], source_url: str = "") -> Dict[str, Any]:
+    # Force-send extractor-generated insight fields to Teable.
+    # If Usefulness is empty, derive it from the generated insight fields.
+    if not str(final_row.get("Digital Marketing Insight", "")).strip():
+        final_row["Digital Marketing Insight"] = str(final_row.get("Client-ready Insight", "") or "").strip()
+
+    if not str(final_row.get("Usefulness", "")).strip():
+        usefulness_parts = []
+        for source_field in ["Client-ready Insight", "Digital Marketing Insight", "Summary", "Key Statistics"]:
+            value = str(final_row.get(source_field, "") or "").strip()
+            if value and value.lower() != "not specified":
+                usefulness_parts.append(value)
+        final_row["Usefulness"] = "\n\n".join(usefulness_parts[:3])
+
     fields: Dict[str, Any] = {}
 
     multiple_select_fields = {"Category", "Traveler Market", "Useful For", "Relevant Client Types"}
