@@ -710,307 +710,107 @@ def build_audience_intelligence_markdown(
     client_profile: Dict[str, Any],
     matches: List[Dict[str, Any]],
     matched_statistics: List[Dict[str, Any]],
-    action_recommendations: Dict[str, List[str]],
+    action_recommendations: Dict[str, List[str]] = None,
     action_cards: List[Dict[str, Any]] = None,
     audience_segments: List[Dict[str, Any]] = None,
     content_angles: List[Dict[str, Any]] = None,
     day_plan: Dict[str, List[str]] = None,
 ) -> str:
     """
-    Build a human-readable Markdown report for the Client Audience Intelligence output.
-    The report prioritizes audience behavior statistics and source attribution.
+    Build a simple Markdown export focused only on traveler data points
+    and the research sources behind them. No actions, content pillars,
+    digital marketing plan or 30/60/90 plan are included.
     """
-    action_cards = action_cards or []
-    audience_segments = audience_segments or []
-    content_angles = content_angles or []
-    day_plan = day_plan or {}
-
     client_name = str(client_profile.get("client_name", "Client") or "Client").strip()
     website = str(client_profile.get("website", "") or "").strip()
     main_destination = str(client_profile.get("main_destination", "") or "").strip()
     main_vertical = str(client_profile.get("main_vertical", "") or "").strip()
 
-    target_audiences = client_profile.get("target_audiences", []) or []
-    products_services = client_profile.get("products_services", []) or []
-    business_goals = client_profile.get("business_goals", []) or []
-    channels = client_profile.get("channels", []) or []
-    research_needs = client_profile.get("research_needs", []) or []
-    audience_needs = client_profile.get("audience_needs", []) or []
-
     def join_values(values: Any) -> str:
         if isinstance(values, list):
             cleaned = [str(value).strip() for value in values if str(value).strip()]
             return ", ".join(cleaned) if cleaned else "Not specified"
-        text = str(values or "").strip()
-        return text if text else "Not specified"
+        text_value = str(values or "").strip()
+        return text_value if text_value else "Not specified"
+
+    def source_label(source: Dict[str, Any]) -> str:
+        source = source or {}
+        name = str(source.get("source_name", "") or "—").strip()
+        report = str(source.get("source_report", "") or "").strip()
+        year = str(source.get("source_year", "") or "").strip()
+        if report and year:
+            return f"{name} — {report} ({year})"
+        if report:
+            return f"{name} — {report}"
+        if year:
+            return f"{name} ({year})"
+        return name
 
     lines: List[str] = []
-
-    lines.append(f"# {client_name} — Audience Intelligence Report")
+    lines.append(f"# {client_name} — Traveler Data Points")
     lines.append("")
-    lines.append("## Client Profile Summary")
+    lines.append("## Client / Partner Profile")
     lines.append("")
     lines.append(f"- **Website:** {website or 'Not specified'}")
     lines.append(f"- **Main destination:** {main_destination or 'Not specified'}")
     lines.append(f"- **Main vertical:** {main_vertical or 'Not specified'}")
-    lines.append(f"- **Products / services:** {join_values(products_services)}")
-    lines.append(f"- **Target audiences:** {join_values(target_audiences)}")
-    lines.append(f"- **Business goals:** {join_values(business_goals)}")
-    lines.append(f"- **Channels:** {join_values(channels)}")
-    lines.append(f"- **Research needs:** {join_values(research_needs)}")
-    lines.append(f"- **Audience needs:** {join_values(audience_needs)}")
+    lines.append(f"- **Products / services:** {join_values(client_profile.get('products_services', []))}")
+    lines.append(f"- **Target audiences:** {join_values(client_profile.get('target_audiences', []))}")
+    lines.append(f"- **Markets:** {join_values(client_profile.get('markets', []))}")
+    lines.append(f"- **Research needs:** {join_values(client_profile.get('research_needs', []))}")
     lines.append("")
     lines.append("---")
     lines.append("")
 
-    lines.append("## 1. Audience Behavior Statistics")
+    lines.append("## 1. Matched Traveler Data Points")
     lines.append("")
-    lines.append(
-        "Τα παρακάτω στατιστικά επιλέχθηκαν επειδή συνδέονται με το κοινό, "
-        "τις υπηρεσίες, τους στόχους ή τα κανάλια του συγκεκριμένου client."
-    )
+    lines.append("Τα παρακάτω στοιχεία επιλέχθηκαν επειδή ταιριάζουν με το προφίλ, το προϊόν, το κοινό ή τις αγορές ενδιαφέροντος.")
     lines.append("")
 
     if not matched_statistics:
-        lines.append("_Δεν βρέθηκαν σχετικά στατιστικά για το συγκεκριμένο client profile._")
+        lines.append("_Δεν βρέθηκαν σχετικά traveler data points για το συγκεκριμένο profile._")
         lines.append("")
     else:
-        for index, statistic in enumerate(matched_statistics[:10], start=1):
+        for index, statistic in enumerate(matched_statistics[:12], start=1):
             source = statistic.get("source", {}) or {}
             parent = statistic.get("parent_research", {}) or {}
-
             lines.append(f"### {index}. {statistic.get('stat', '')}")
             lines.append("")
-            lines.append(f"- **Behavior type:** {statistic.get('behavior_type', 'Audience Behavior')}")
-            lines.append(f"- **Relevance score:** {statistic.get('statistic_score', 0)}/100")
-
-            why_it_matches = statistic.get("why_it_matches", "")
-            if why_it_matches:
-                lines.append(f"- **Why it matches:** {why_it_matches}")
-
-            what_this_shows = statistic.get("what_this_shows", "")
-            if what_this_shows:
-                lines.append(f"- **What this shows:** {what_this_shows}")
-
-            client_implication = statistic.get("client_implication", "")
-            if client_implication:
-                lines.append(f"- **What this means for the client:** {client_implication}")
-
-            evidence = statistic.get("evidence", "")
-            if evidence:
-                lines.append(f"- **Evidence:** {evidence}")
-
-            lines.append(
-                f"- **Source:** {source.get('source_name', '')} — "
-                f"{source.get('source_report', '')} ({source.get('source_year', '')})"
-            )
-
-            if source.get("source_file"):
-                lines.append(f"- **Source file:** {source.get('source_file')}")
-
+            if statistic.get("behavior_type"):
+                lines.append(f"- **Type:** {statistic.get('behavior_type')}")
+            if statistic.get("what_this_shows"):
+                lines.append(f"- **What this shows:** {statistic.get('what_this_shows')}")
+            if statistic.get("why_it_matches"):
+                lines.append(f"- **Why it matches:** {statistic.get('why_it_matches')}")
+            if statistic.get("evidence"):
+                lines.append(f"- **Evidence:** {statistic.get('evidence')}")
+            lines.append(f"- **Source:** {source_label(source)}")
             if parent.get("research_title"):
                 lines.append(f"- **Linked research block:** {parent.get('research_title')}")
-
             lines.append("")
 
     lines.append("---")
     lines.append("")
-
-    lines.append("## 2. Planning & Booking Behavior")
-    lines.append("")
-    lines.append(
-        "Σημεία που σχετίζονται με το πώς το κοινό σχεδιάζει, αναζητά, συγκρίνει, "
-        "εμπιστεύεται και τελικά προχωρά σε κράτηση ή αγορά."
-    )
-    lines.append("")
-
-    planning_found = False
-
-    planning_statistics = [
-        statistic for statistic in matched_statistics
-        if statistic.get("behavior_type") == "Planning & Booking"
-    ]
-
-    if planning_statistics:
-        planning_found = True
-        lines.append("### Planning & Booking Statistics")
-        lines.append("")
-        for statistic in planning_statistics[:8]:
-            source = statistic.get("source", {}) or {}
-            lines.append(f"- **{statistic.get('stat', '')}**")
-            if statistic.get("what_this_shows"):
-                lines.append(f"  - **What this shows:** {statistic.get('what_this_shows')}")
-            if statistic.get("client_implication"):
-                lines.append(f"  - **Client implication:** {statistic.get('client_implication')}")
-            lines.append(
-                f"  - **Source:** {source.get('source_name', '')} — "
-                f"{source.get('source_report', '')} ({source.get('source_year', '')})"
-            )
-            lines.append("")
-
-    for match in matches[:10]:
-        planning_points = match.get("planning_booking_points", []) or []
-        if not planning_points:
-            continue
-
-        planning_found = True
-        source = match.get("source", {}) or {}
-
-        lines.append(f"### {match.get('research_title', '')}")
-        lines.append("")
-        lines.append(f"- **Relevance score:** {match.get('relevance_score', 0)}/100")
-
-        for point in planning_points:
-            lines.append(f"- {point}")
-
-        lines.append(
-            f"- **Source:** {source.get('source_name', '')} — "
-            f"{source.get('source_report', '')} ({source.get('source_year', '')})"
-        )
-
-        if source.get("source_file"):
-            lines.append(f"- **Source file:** {source.get('source_file')}")
-
-        lines.append("")
-
-    if not planning_found:
-        lines.append("_Δεν βρέθηκαν ξεχωριστά Planning & Booking points για το συγκεκριμένο client profile._")
-        lines.append("")
-
-    lines.append("---")
-    lines.append("")
-
-    lines.append("## 3. Recommended Actions To Do")
-    lines.append("")
-    lines.append(
-        "Πρακτικές ενέργειες που προκύπτουν από το client profile και μπορούν να αξιοποιηθούν "
-        "από social media, web development και digital marketing teams."
-    )
-    lines.append("")
-
-    action_sections = [
-        ("Social Media Actions", action_recommendations.get("social_media_actions", [])),
-        ("Web Development Actions", action_recommendations.get("web_development_actions", [])),
-        ("Digital Marketing Actions", action_recommendations.get("digital_marketing_actions", [])),
-    ]
-
-    for section_title, actions in action_sections:
-        lines.append(f"### {section_title}")
-        lines.append("")
-        if actions:
-            for action in actions:
-                lines.append(f"- {action}")
-        else:
-            lines.append("_Δεν δημιουργήθηκαν προτεινόμενες ενέργειες για αυτή την κατηγορία._")
-        lines.append("")
-
-    lines.append("---")
-    lines.append("")
-    lines.append("## 4. Evidence-backed Action Cards")
-    lines.append("")
-    if action_cards:
-        for index, card in enumerate(action_cards[:10], start=1):
-            lines.append(f"### {index}. {card.get('category', 'Action')}")
-            lines.append(f"- **Action:** {card.get('action', '')}")
-            lines.append(f"- **Priority:** {card.get('priority', '')}")
-            lines.append(f"- **Why it matters:** {card.get('why_it_matters', '')}")
-            lines.append(f"- **Supporting statistic:** {card.get('supporting_statistic', '')}")
-            lines.append(f"- **Source:** {card.get('source_text', '—')}")
-            lines.append("")
-    else:
-        lines.append("_Δεν δημιουργήθηκαν evidence-backed action cards._")
-        lines.append("")
-
-    lines.append("---")
-    lines.append("")
-    lines.append("## 5. Best Matching Audience Segments")
-    lines.append("")
-    if audience_segments:
-        for segment in audience_segments[:8]:
-            lines.append(f"### {segment.get('audience_segment', '')}")
-            lines.append(f"- **Priority:** {segment.get('priority_label', '')}")
-            lines.append(f"- **Matched statistics:** {segment.get('matched_statistics_count', 0)}")
-            lines.append(f"- **Average relevance score:** {segment.get('average_relevance_score', 0)}/100")
-            if segment.get("behavior_types"):
-                lines.append(f"- **Behavior types:** {', '.join(segment.get('behavior_types', []))}")
-            if segment.get("top_statistics"):
-                lines.append("- **Top supporting statistics:**")
-                for stat in segment.get("top_statistics", []):
-                    lines.append(f"  - {stat}")
-            lines.append("")
-    else:
-        lines.append("_Δεν εντοπίστηκαν ισχυρά audience segments._")
-        lines.append("")
-
-    lines.append("---")
-    lines.append("")
-    lines.append("## 6. Suggested Content Angles")
-    lines.append("")
-    if content_angles:
-        for index, angle in enumerate(content_angles[:8], start=1):
-            lines.append(f"### {index}. {angle.get('angle', '')}")
-            lines.append(f"- **Recommended format:** {angle.get('recommended_format', '')}")
-            lines.append(f"- **Why it works:** {angle.get('why_it_works', '')}")
-            if angle.get("supporting_statistic"):
-                lines.append(f"- **Supporting statistic:** {angle.get('supporting_statistic', '')}")
-            lines.append(f"- **Source:** {angle.get('source_text', '—')}")
-            lines.append("")
-    else:
-        lines.append("_Δεν δημιουργήθηκαν content angles._")
-        lines.append("")
-
-    lines.append("---")
-    lines.append("")
-    lines.append("## 7. 30/60/90 Day Action Plan")
-    lines.append("")
-    plan_sections = [("30 days", "30_days"), ("60 days", "60_days"), ("90 days", "90_days")]
-    for label, key in plan_sections:
-        lines.append(f"### {label}")
-        actions = day_plan.get(key, [])
-        if actions:
-            for action in actions:
-                lines.append(f"- {action}")
-        else:
-            lines.append("_Δεν δημιουργήθηκαν ενέργειες για αυτό το στάδιο._")
-        lines.append("")
-
-    lines.append("---")
-    lines.append("")
-
-    lines.append("## 8. Supporting Research Context")
-    lines.append("")
-    lines.append(
-        "Τα παρακάτω research themes λειτουργούν υποστηρικτικά και δίνουν επιπλέον context "
-        "για τη στρατηγική κατεύθυνση του client."
-    )
+    lines.append("## 2. Related Research Context")
     lines.append("")
 
     if not matches:
-        lines.append("_Δεν βρέθηκαν supporting research insights._")
-        lines.append("")
+        lines.append("_Δεν βρέθηκαν σχετικά research blocks._")
     else:
-        for index, match in enumerate(matches[:5], start=1):
+        for index, match in enumerate(matches[:8], start=1):
             source = match.get("source", {}) or {}
-
             lines.append(f"### {index}. {match.get('research_title', '')}")
             lines.append("")
-            lines.append(f"- **Relevance score:** {match.get('relevance_score', 0)}/100")
-            lines.append(f"- **Why it matches:** {match.get('why_it_matches', '')}")
-            lines.append(f"- **Key finding:** {match.get('key_finding', '')}")
-            lines.append(f"- **Evidence:** {match.get('evidence', '')}")
-            lines.append(
-                f"- **Source:** {source.get('source_name', '')} — "
-                f"{source.get('source_report', '')} ({source.get('source_year', '')})"
-            )
-
-            if source.get("source_file"):
-                lines.append(f"- **Source file:** {source.get('source_file')}")
-
+            if match.get("why_it_matches"):
+                lines.append(f"- **Why it matches:** {match.get('why_it_matches')}")
+            if match.get("key_finding"):
+                lines.append(f"- **Key finding:** {match.get('key_finding')}")
+            if match.get("evidence"):
+                lines.append(f"- **Evidence:** {match.get('evidence')}")
+            lines.append(f"- **Source:** {source_label(source)}")
             lines.append("")
 
     return "\n".join(lines)
-
-
 
 def _xml_escape(value: Any) -> str:
     """
@@ -1068,11 +868,11 @@ def build_audience_intelligence_pdf(
     client_profile: Dict[str, Any],
     matches: List[Dict[str, Any]],
     matched_statistics: List[Dict[str, Any]],
-    action_recommendations: Dict[str, List[str]],
+    action_recommendations: Dict[str, List[str]] = None,
 ) -> bytes:
     """
-    Build a PDF report for the Client Audience Intelligence output.
-    Uses ReportLab and a Unicode font when available.
+    Build a simple PDF report focused only on traveler data points and sources.
+    No actions, content pillars, digital marketing plan or 30/60/90 plan are included.
     """
     from io import BytesIO
     from reportlab.lib import colors
@@ -1080,17 +880,9 @@ def build_audience_intelligence_pdf(
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.lib.units import cm
-    from reportlab.platypus import (
-        SimpleDocTemplate,
-        Paragraph,
-        Spacer,
-        Table,
-        TableStyle,
-        PageBreak,
-    )
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 
     font_regular, font_bold = _register_pdf_fonts()
-
     buffer = BytesIO()
     doc = SimpleDocTemplate(
         buffer,
@@ -1102,212 +894,95 @@ def build_audience_intelligence_pdf(
     )
 
     styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(
-        "AudienceTitle",
-        parent=styles["Title"],
-        fontName=font_bold,
-        fontSize=20,
-        leading=24,
-        spaceAfter=14,
-        alignment=TA_LEFT,
-        textColor=colors.HexColor("#111827"),
-    )
-    section_style = ParagraphStyle(
-        "AudienceSection",
-        parent=styles["Heading2"],
-        fontName=font_bold,
-        fontSize=14,
-        leading=18,
-        spaceBefore=14,
-        spaceAfter=8,
-        textColor=colors.HexColor("#111827"),
-    )
-    subheading_style = ParagraphStyle(
-        "AudienceSubheading",
-        parent=styles["Heading3"],
-        fontName=font_bold,
-        fontSize=11,
-        leading=14,
-        spaceBefore=8,
-        spaceAfter=4,
-        textColor=colors.HexColor("#111827"),
-    )
-    body_style = ParagraphStyle(
-        "AudienceBody",
-        parent=styles["BodyText"],
-        fontName=font_regular,
-        fontSize=9.5,
-        leading=13.5,
-        spaceAfter=6,
-        textColor=colors.HexColor("#1f2937"),
-    )
-    bullet_style = ParagraphStyle(
-        "AudienceBullet",
-        parent=body_style,
-        leftIndent=12,
-        firstLineIndent=-8,
-        bulletIndent=0,
-        spaceAfter=6,
-    )
-    muted_style = ParagraphStyle(
-        "AudienceMuted",
-        parent=body_style,
-        fontSize=8.5,
-        leading=12,
-        textColor=colors.HexColor("#6b7280"),
-    )
+    title_style = ParagraphStyle("TitleSimple", parent=styles["Title"], fontName=font_bold, fontSize=18, leading=22, alignment=TA_LEFT, textColor=colors.HexColor("#111827"))
+    section_style = ParagraphStyle("SectionSimple", parent=styles["Heading2"], fontName=font_bold, fontSize=13, leading=17, spaceBefore=12, spaceAfter=7, textColor=colors.HexColor("#111827"))
+    sub_style = ParagraphStyle("SubSimple", parent=styles["Heading3"], fontName=font_bold, fontSize=10.5, leading=14, spaceBefore=8, spaceAfter=4, textColor=colors.HexColor("#991b1b"))
+    body_style = ParagraphStyle("BodySimple", parent=styles["BodyText"], fontName=font_regular, fontSize=9, leading=12.5, spaceAfter=5, textColor=colors.HexColor("#1f2937"))
+    muted_style = ParagraphStyle("MutedSimple", parent=body_style, fontSize=8.3, textColor=colors.HexColor("#6b7280"))
 
-    def p(text: Any, style=body_style):
-        return Paragraph(_xml_escape(text), style)
+    def p(value: Any, style=body_style):
+        return Paragraph(_xml_escape(value), style)
 
-    def strong_label(label: str, value: Any):
-        return Paragraph(f"<b>{_xml_escape(label)}:</b> {_xml_escape(value)}", body_style)
+    def source_label(source: Dict[str, Any]) -> str:
+        source = source or {}
+        name = str(source.get("source_name", "") or "—").strip()
+        report = str(source.get("source_report", "") or "").strip()
+        year = str(source.get("source_year", "") or "").strip()
+        if report and year:
+            return f"{name} - {report} ({year})"
+        if report:
+            return f"{name} - {report}"
+        if year:
+            return f"{name} ({year})"
+        return name
 
     def join_values(values: Any) -> str:
         if isinstance(values, list):
             cleaned = [str(value).strip() for value in values if str(value).strip()]
             return ", ".join(cleaned) if cleaned else "Not specified"
-        text = str(values or "").strip()
-        return text if text else "Not specified"
+        text_value = str(values or "").strip()
+        return text_value if text_value else "Not specified"
 
     client_name = str(client_profile.get("client_name", "Client") or "Client").strip()
-
-    elements = []
-    elements.append(Paragraph(_xml_escape(f"{client_name} - Audience Intelligence Report"), title_style))
-    elements.append(p("Audience behavior statistics, planning/booking signals and source-backed supporting context.", muted_style))
+    elements = [Paragraph(_xml_escape(f"{client_name} - Traveler Data Points"), title_style)]
+    elements.append(p("Research-backed traveler data points and related sources.", muted_style))
     elements.append(Spacer(1, 8))
 
-    profile_data = [
-        [p("Website", muted_style), p(client_profile.get("website", "Not specified"), body_style)],
-        [p("Main destination", muted_style), p(client_profile.get("main_destination", "Not specified"), body_style)],
-        [p("Main vertical", muted_style), p(client_profile.get("main_vertical", "Not specified"), body_style)],
-        [p("Products / services", muted_style), p(join_values(client_profile.get("products_services", [])), body_style)],
-        [p("Target audiences", muted_style), p(join_values(client_profile.get("target_audiences", [])), body_style)],
-        [p("Business goals", muted_style), p(join_values(client_profile.get("business_goals", [])), body_style)],
-        [p("Channels", muted_style), p(join_values(client_profile.get("channels", [])), body_style)],
+    profile_rows = [
+        [p("Destination", muted_style), p(client_profile.get("main_destination", "Not specified"))],
+        [p("Vertical", muted_style), p(client_profile.get("main_vertical", "Not specified"))],
+        [p("Products / services", muted_style), p(join_values(client_profile.get("products_services", [])))],
+        [p("Target audiences", muted_style), p(join_values(client_profile.get("target_audiences", [])))],
+        [p("Markets", muted_style), p(join_values(client_profile.get("markets", [])))],
     ]
-
-    profile_table = Table(profile_data, colWidths=[4.0 * cm, 12.0 * cm], hAlign="LEFT")
-    profile_table.setStyle(TableStyle([
+    table = Table(profile_rows, colWidths=[4.2 * cm, 11.7 * cm], hAlign="LEFT")
+    table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
         ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#e5e7eb")),
         ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#e5e7eb")),
         ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 8),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-        ("TOPPADDING", (0, 0), (-1, -1), 6),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("LEFTPADDING", (0, 0), (-1, -1), 7),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
     ]))
-    elements.append(profile_table)
+    elements.append(table)
     elements.append(Spacer(1, 10))
 
-    elements.append(Paragraph("1. Audience Behavior Statistics", section_style))
-    elements.append(p("Τα παρακάτω στατιστικά επιλέχθηκαν επειδή συνδέονται με το κοινό, τις υπηρεσίες, τους στόχους ή τα κανάλια του συγκεκριμένου client."))
-
+    elements.append(Paragraph("1. Matched Traveler Data Points", section_style))
     if not matched_statistics:
-        elements.append(p("Δεν βρέθηκαν σχετικά στατιστικά για το συγκεκριμένο client profile.", muted_style))
+        elements.append(p("No relevant traveler data points were found.", muted_style))
     else:
-        for index, statistic in enumerate(matched_statistics[:10], start=1):
+        for index, statistic in enumerate(matched_statistics[:12], start=1):
             source = statistic.get("source", {}) or {}
-            parent = statistic.get("parent_research", {}) or {}
-
-            elements.append(Paragraph(_xml_escape(f"{index}. {statistic.get('behavior_type', 'Audience Behavior')} - Score {statistic.get('statistic_score', 0)}/100"), subheading_style))
-            elements.append(Paragraph(f"• <b>{_xml_escape(statistic.get('stat', ''))}</b>", bullet_style))
-
+            elements.append(Paragraph(_xml_escape(f"{index}. {statistic.get('behavior_type', 'Traveler Behavior')}"), sub_style))
+            elements.append(p(f"<b>Data point:</b> {_xml_escape(statistic.get('stat', ''))}"))
             if statistic.get("what_this_shows"):
-                elements.append(strong_label("What this shows", statistic.get("what_this_shows", "")))
-            if statistic.get("client_implication"):
-                elements.append(strong_label("What this means for the client", statistic.get("client_implication", "")))
+                elements.append(p(f"<b>What this shows:</b> {_xml_escape(statistic.get('what_this_shows', ''))}"))
             if statistic.get("why_it_matches"):
-                elements.append(strong_label("Why this statistic was selected", statistic.get("why_it_matches", "")))
+                elements.append(p(f"<b>Why it matches:</b> {_xml_escape(statistic.get('why_it_matches', ''))}"))
             if statistic.get("evidence"):
-                elements.append(strong_label("Evidence", statistic.get("evidence", "")))
+                elements.append(p(f"<b>Evidence:</b> {_xml_escape(statistic.get('evidence', ''))}"))
+            elements.append(p(f"<b>Source:</b> {_xml_escape(source_label(source))}"))
+            elements.append(Spacer(1, 5))
 
-            source_text = (
-                f"{source.get('source_name', '')} - {source.get('source_report', '')} "
-                f"({source.get('source_year', '')})"
-            )
-            elements.append(strong_label("Source", source_text))
-            if source.get("source_file"):
-                elements.append(strong_label("Source file", source.get("source_file")))
-            if parent.get("research_title"):
-                elements.append(strong_label("Linked research block", parent.get("research_title")))
-            elements.append(Spacer(1, 8))
-
-    elements.append(Paragraph("2. Planning & Booking Behavior", section_style))
-    elements.append(p("Σημεία που σχετίζονται με το πώς το κοινό σχεδιάζει, αναζητά, συγκρίνει ή κάνει κράτηση."))
-
-    planning_found = False
-    planning_statistics = [
-        statistic for statistic in matched_statistics
-        if statistic.get("behavior_type") == "Planning & Booking"
-    ]
-
-    for statistic in planning_statistics[:8]:
-        planning_found = True
-        source = statistic.get("source", {}) or {}
-        elements.append(Paragraph(f"• <b>{_xml_escape(statistic.get('stat', ''))}</b>", bullet_style))
-        if statistic.get("what_this_shows"):
-            elements.append(strong_label("What this shows", statistic.get("what_this_shows")))
-        if statistic.get("client_implication"):
-            elements.append(strong_label("Strategic implication", statistic.get("client_implication")))
-        elements.append(strong_label("Source", f"{source.get('source_name', '')} - {source.get('source_report', '')} ({source.get('source_year', '')})"))
-        elements.append(Spacer(1, 6))
-
-    for match in matches[:8]:
-        planning_points = match.get("planning_booking_points", []) or []
-        if not planning_points:
-            continue
-        planning_found = True
-        source = match.get("source", {}) or {}
-        elements.append(Paragraph(_xml_escape(match.get("research_title", "")), subheading_style))
-        for point in planning_points:
-            elements.append(Paragraph(f"• {_xml_escape(point)}", bullet_style))
-        elements.append(strong_label("Source", f"{source.get('source_name', '')} - {source.get('source_report', '')} ({source.get('source_year', '')})"))
-        elements.append(Spacer(1, 6))
-
-    if not planning_found:
-        elements.append(p("Δεν βρέθηκαν ξεχωριστά Planning & Booking points για το συγκεκριμένο client profile.", muted_style))
-
-    elements.append(Paragraph("3. Recommended Actions To Do", section_style))
-    elements.append(p("Πρακτικές ενέργειες που προκύπτουν από το client profile για social media, web development και digital marketing."))
-
-    action_sections = [
-        ("Social Media Actions", action_recommendations.get("social_media_actions", [])),
-        ("Web Development Actions", action_recommendations.get("web_development_actions", [])),
-        ("Digital Marketing Actions", action_recommendations.get("digital_marketing_actions", [])),
-    ]
-
-    for section_title, actions in action_sections:
-        elements.append(Paragraph(_xml_escape(section_title), subheading_style))
-        if actions:
-            for action in actions:
-                elements.append(Paragraph(f"• {_xml_escape(action)}", bullet_style))
-        else:
-            elements.append(p("Δεν δημιουργήθηκαν προτεινόμενες ενέργειες για αυτή την κατηγορία.", muted_style))
-        elements.append(Spacer(1, 6))
-
-    elements.append(PageBreak())
-    elements.append(Paragraph("4. Supporting Research Context", section_style))
-
+    elements.append(Paragraph("2. Related Research", section_style))
     if not matches:
-        elements.append(p("Δεν βρέθηκαν supporting research insights.", muted_style))
+        elements.append(p("No related research context found.", muted_style))
     else:
-        for index, match in enumerate(matches[:5], start=1):
+        for index, match in enumerate(matches[:8], start=1):
             source = match.get("source", {}) or {}
-            elements.append(Paragraph(_xml_escape(f"{index}. {match.get('research_title', '')} - Score {match.get('relevance_score', 0)}/100"), subheading_style))
-            elements.append(strong_label("Why it matches", match.get("why_it_matches", "")))
-            elements.append(strong_label("Key finding", match.get("key_finding", "")))
-            elements.append(strong_label("Evidence", match.get("evidence", "")))
-            elements.append(strong_label("Source", f"{source.get('source_name', '')} - {source.get('source_report', '')} ({source.get('source_year', '')})"))
-            if source.get("source_file"):
-                elements.append(strong_label("Source file", source.get("source_file")))
-            elements.append(Spacer(1, 8))
+            elements.append(Paragraph(_xml_escape(f"{index}. {match.get('research_title', '')}"), sub_style))
+            if match.get("key_finding"):
+                elements.append(p(f"<b>Key finding:</b> {_xml_escape(match.get('key_finding', ''))}"))
+            if match.get("why_it_matches"):
+                elements.append(p(f"<b>Why it matches:</b> {_xml_escape(match.get('why_it_matches', ''))}"))
+            elements.append(p(f"<b>Source:</b> {_xml_escape(source_label(source))}"))
+            elements.append(Spacer(1, 5))
 
     doc.build(elements)
     buffer.seek(0)
     return buffer.getvalue()
-
 
 def _docx_text(value: Any) -> str:
     """Return safe text for DOCX export."""
@@ -1390,25 +1065,16 @@ def build_audience_intelligence_docx(
     client_profile: Dict[str, Any],
     matches: List[Dict[str, Any]],
     matched_statistics: List[Dict[str, Any]],
-    action_recommendations: Dict[str, List[str]],
+    action_recommendations: Dict[str, List[str]] = None,
     action_cards: Optional[List[Dict[str, Any]]] = None,
     audience_segments: Optional[List[Dict[str, Any]]] = None,
     content_angles: Optional[List[Dict[str, Any]]] = None,
     plan_30_60_90: Optional[Dict[str, List[str]]] = None,
 ) -> bytes:
     """
-    Build a cleaner, editable DOCX report for Client Audience Intelligence.
-
-    Structure:
-    - Title page / report context
-    - Executive Summary
-    - Client Profile Snapshot
-    - Key Audience Behavior Statistics
-    - Recommended Actions
-    - 30/60/90 Action Plan
-    - Content Angles
-    - Supporting Sources
-    - Appendix: Detailed Evidence
+    Build an editable DOCX report focused only on traveler data points
+    and related research sources. No actions, content pillars, digital
+    marketing plan or 30/60/90 plan are included.
     """
     from io import BytesIO
     from docx import Document
@@ -1418,26 +1084,15 @@ def build_audience_intelligence_docx(
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
 
-    action_cards = action_cards or []
-    audience_segments = audience_segments or []
-    content_angles = content_angles or []
-    plan_30_60_90 = plan_30_60_90 or {}
-
-    # Tourix-inspired red theme for DOCX exports.
-    # The report stays editable, but uses red accents, soft red table shading,
-    # and dark red headings to match a more branded visual identity.
-    TOURIX_DARK_RED = RGBColor(127, 29, 29)   # deep red
-    TOURIX_RED = RGBColor(185, 28, 28)        # primary red
-    TOURIX_SOFT_RED = RGBColor(248, 113, 113) # accent red
+    TOURIX_DARK_RED = RGBColor(127, 29, 29)
+    TOURIX_RED = RGBColor(185, 28, 28)
     TOURIX_MUTED = RGBColor(107, 114, 128)
     TOURIX_BODY = RGBColor(31, 41, 55)
     TOURIX_LIGHT_RED_HEX = "FEE2E2"
     TOURIX_SOFT_RED_HEX = "FFF1F2"
     TOURIX_BORDER_RED_HEX = "FCA5A5"
-    TOURIX_DARK_RED_HEX = "7F1D1D"
 
     def set_cell_shading(cell, fill: str):
-        """Apply background shading to a DOCX table cell."""
         tc_pr = cell._tc.get_or_add_tcPr()
         shd = tc_pr.find(qn("w:shd"))
         if shd is None:
@@ -1446,9 +1101,7 @@ def build_audience_intelligence_docx(
         shd.set(qn("w:fill"), fill)
 
     def set_cell_border(cell, color: str = TOURIX_BORDER_RED_HEX, size: str = "8"):
-        """Apply a light red border around a DOCX table cell."""
-        tc = cell._tc
-        tc_pr = tc.get_or_add_tcPr()
+        tc_pr = cell._tc.get_or_add_tcPr()
         tc_borders = tc_pr.first_child_found_in("w:tcBorders")
         if tc_borders is None:
             tc_borders = OxmlElement("w:tcBorders")
@@ -1464,14 +1117,64 @@ def build_audience_intelligence_docx(
             element.set(qn("w:space"), "0")
             element.set(qn("w:color"), color)
 
-    def color_paragraph(paragraph, color: RGBColor, bold: bool = False):
-        for run in paragraph.runs:
-            run.font.color.rgb = color
-            if bold:
-                run.bold = True
+    def add_small_note(document, text: str):
+        paragraph = document.add_paragraph()
+        run = paragraph.add_run(text)
+        run.font.size = Pt(9)
+        run.font.color.rgb = TOURIX_MUTED
+        return paragraph
+
+    def add_section_intro(document, text: str):
+        paragraph = document.add_paragraph()
+        run = paragraph.add_run(text)
+        run.font.size = Pt(10)
+        run.font.color.rgb = TOURIX_MUTED
+        return paragraph
+
+    def source_inline(source: Dict[str, Any]) -> str:
+        source = source or {}
+        source_name = _docx_text(source.get("source_name", "")) or "—"
+        source_report = _docx_text(source.get("source_report", ""))
+        source_year = _docx_text(source.get("source_year", ""))
+        if source_report and source_year:
+            return f"{source_name} — {source_report} ({source_year})"
+        if source_report:
+            return f"{source_name} — {source_report}"
+        if source_year:
+            return f"{source_name} ({source_year})"
+        return source_name
+
+    def add_source_line(document, source: Dict[str, Any]):
+        paragraph = document.add_paragraph()
+        label = paragraph.add_run("Source: ")
+        label.bold = True
+        label.font.color.rgb = TOURIX_DARK_RED
+        value_run = paragraph.add_run(source_inline(source))
+        value_run.font.color.rgb = TOURIX_BODY
+        return paragraph
+
+    def add_label_value_table(document, rows: List[tuple[str, str]]):
+        table = document.add_table(rows=0, cols=2)
+        table.alignment = WD_TABLE_ALIGNMENT.LEFT
+        table.style = "Table Grid"
+        for label, value in rows:
+            cells = table.add_row().cells
+            cells[0].text = label
+            cells[1].text = value or "Not specified"
+            cells[0].vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
+            cells[1].vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
+            set_cell_shading(cells[0], TOURIX_LIGHT_RED_HEX)
+            set_cell_shading(cells[1], TOURIX_SOFT_RED_HEX)
+            set_cell_border(cells[0])
+            set_cell_border(cells[1])
+            for paragraph in cells[0].paragraphs:
+                for run in paragraph.runs:
+                    run.bold = True
+                    run.font.color.rgb = TOURIX_DARK_RED
+        document.add_paragraph("")
+        return table
 
     document = Document()
-
     section = document.sections[0]
     section.top_margin = Inches(0.65)
     section.bottom_margin = Inches(0.65)
@@ -1491,143 +1194,14 @@ def build_audience_intelligence_docx(
     styles["Heading 2"].font.name = "Arial"
     styles["Heading 2"].font.size = Pt(13)
     styles["Heading 2"].font.color.rgb = TOURIX_RED
-    styles["Heading 3"].font.name = "Arial"
-    styles["Heading 3"].font.size = Pt(11)
-    styles["Heading 3"].font.color.rgb = TOURIX_RED
 
     client_name = _docx_text(client_profile.get("client_name", "Client")) or "Client"
 
-    def add_small_note(text: str):
-        paragraph = document.add_paragraph()
-        run = paragraph.add_run(text)
-        run.font.size = Pt(9)
-        run.font.color.rgb = TOURIX_MUTED
-        return paragraph
-
-    def add_section_intro(text: str):
-        paragraph = document.add_paragraph()
-        run = paragraph.add_run(text)
-        run.font.size = Pt(10)
-        run.font.color.rgb = RGBColor(75, 85, 99)
-        return paragraph
-
-    def add_label_value_table(rows: List[tuple[str, str]]):
-        table = document.add_table(rows=0, cols=2)
-        table.alignment = WD_TABLE_ALIGNMENT.LEFT
-        table.style = "Table Grid"
-        for label, value in rows:
-            cells = table.add_row().cells
-            cells[0].text = label
-            cells[1].text = value or "Not specified"
-            cells[0].vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
-            cells[1].vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
-            set_cell_shading(cells[0], TOURIX_LIGHT_RED_HEX)
-            set_cell_shading(cells[1], TOURIX_SOFT_RED_HEX)
-            set_cell_border(cells[0])
-            set_cell_border(cells[1])
-            for paragraph in cells[0].paragraphs:
-                for run in paragraph.runs:
-                    run.bold = True
-                    run.font.color.rgb = TOURIX_DARK_RED
-            for paragraph in cells[1].paragraphs:
-                for run in paragraph.runs:
-                    run.font.color.rgb = TOURIX_BODY
-        document.add_paragraph("")
-        return table
-
-    def source_inline(source: Dict[str, Any]) -> str:
-        source_name = _docx_text(source.get("source_name", "")) or "—"
-        source_report = _docx_text(source.get("source_report", ""))
-        source_year = _docx_text(source.get("source_year", ""))
-        if source_report and source_year:
-            return f"{source_name} — {source_report} ({source_year})"
-        if source_report:
-            return f"{source_name} — {source_report}"
-        if source_year:
-            return f"{source_name} ({source_year})"
-        return source_name
-
-    def add_source_line(source: Dict[str, Any]):
-        paragraph = document.add_paragraph()
-        label = paragraph.add_run("Source: ")
-        label.bold = True
-        label.font.color.rgb = TOURIX_DARK_RED
-        value_run = paragraph.add_run(source_inline(source))
-        value_run.font.color.rgb = TOURIX_BODY
-        return paragraph
-
-    def top_actions(limit: int = 3) -> List[str]:
-        output = []
-        for key in ["web_development_actions", "digital_marketing_actions", "social_media_actions"]:
-            for action in action_recommendations.get(key, []):
-                if action not in output:
-                    output.append(action)
-                if len(output) >= limit:
-                    return output
-        return output
-
-    def build_executive_summary() -> List[str]:
-        bullets: List[str] = []
-
-        top_stat = matched_statistics[0] if matched_statistics else None
-        if top_stat:
-            implication = _docx_text(top_stat.get("client_implication", ""))
-            if implication:
-                bullets.append(implication)
-            else:
-                bullets.append(_docx_text(top_stat.get("what_this_shows", "")))
-
-        planning_stats = [
-            stat for stat in matched_statistics
-            if _docx_text(stat.get("behavior_type", "")).lower() == "planning & booking"
-        ]
-        if planning_stats:
-            bullets.append(
-                "Planning and booking experience should be treated as a priority: clarity, speed, trust signals and mobile-friendly next steps can directly support conversion."
-            )
-
-        social_stats = [
-            stat for stat in matched_statistics
-            if any(token in _docx_text(stat.get("behavior_type", "")).lower() for token in ["social", "inspiration", "discovery"])
-        ]
-        if social_stats:
-            bullets.append(
-                "Social and inspiration-led touchpoints can be used to create demand, especially for audiences that discover experiences through visual or digital content."
-            )
-
-        if audience_segments:
-            segment = _docx_text(audience_segments[0].get("audience_segment", ""))
-            if segment:
-                bullets.append(f"The strongest audience fit in the current research base appears to be: {segment}.")
-
-        for action in top_actions(limit=2):
-            bullets.append(f"Recommended priority: {action}")
-
-        cleaned = []
-        seen = set()
-        for bullet in bullets:
-            bullet = _docx_text(bullet)
-            key = bullet.lower()
-            if bullet and key not in seen:
-                cleaned.append(bullet)
-                seen.add(key)
-            if len(cleaned) >= 5:
-                break
-
-        if not cleaned:
-            cleaned.append("The client profile has been matched with the research database to identify audience behavior signals, action priorities and supporting sources.")
-
-        return cleaned
-
-    # ------------------------------------------------------------------
-    # Title page / report context
-    # ------------------------------------------------------------------
     title = document.add_paragraph(style="Title")
     title.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    title_run = title.add_run(f"{client_name} — Audience Intelligence Report")
+    title_run = title.add_run(f"{client_name} — Traveler Data Points")
     title_run.font.color.rgb = TOURIX_DARK_RED
 
-    # Red accent bar under the title for a more branded Tourix-style report.
     accent = document.add_table(rows=1, cols=1)
     accent.alignment = WD_TABLE_ALIGNMENT.LEFT
     accent_cell = accent.rows[0].cells[0]
@@ -1636,240 +1210,91 @@ def build_audience_intelligence_docx(
     set_cell_border(accent_cell, "DC2626", "4")
     document.add_paragraph("")
 
-    add_small_note("Editable strategy report generated from the business profile and matched research database.")
-    add_small_note(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    add_small_note(document, "Editable research output generated from the client/partner profile and matched research database.")
+    add_small_note(document, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     document.add_paragraph("")
 
-    # ------------------------------------------------------------------
-    # Executive Summary
-    # ------------------------------------------------------------------
-    document.add_heading("Executive Summary", level=1)
-    add_section_intro(
-        "The following summary highlights the strongest behavior signals and priorities for the client based on the current research matches."
-    )
-    for bullet in build_executive_summary():
-        _docx_add_bullet(document, bullet)
-
-    # ------------------------------------------------------------------
-    # Client Profile Snapshot
-    # ------------------------------------------------------------------
-    document.add_heading("Client Profile Snapshot", level=1)
-    add_label_value_table([
+    document.add_heading("Profile Snapshot", level=1)
+    add_label_value_table(document, [
         ("Website", _docx_text(client_profile.get("website", "")) or "Not specified"),
         ("Main destination", _docx_text(client_profile.get("main_destination", "")) or "Not specified"),
         ("Main vertical", _docx_text(client_profile.get("main_vertical", "")) or "Not specified"),
         ("Products / services", _docx_join_values(client_profile.get("products_services", []))),
         ("Target audiences", _docx_join_values(client_profile.get("target_audiences", []))),
-        ("Business goals", _docx_join_values(client_profile.get("business_goals", []))),
-        ("Channels", _docx_join_values(client_profile.get("channels", []))),
-        ("Audience needs", _docx_join_values(client_profile.get("audience_needs", []))),
+        ("Markets", _docx_join_values(client_profile.get("markets", []))),
+        ("Research needs", _docx_join_values(client_profile.get("research_needs", []))),
     ])
 
-    # ------------------------------------------------------------------
-    # Key Audience Behavior Statistics
-    # ------------------------------------------------------------------
-    document.add_heading("1. Key Audience Behavior Statistics", level=1)
-    add_section_intro(
-        "Selected statistics are shown in a compact format: statistic, client implication and source. Detailed evidence is moved to the appendix."
-    )
+    document.add_heading("1. Matched Traveler Data Points", level=1)
+    add_section_intro(document, "Selected data points are matched with the profile and include the source/research they come from.")
 
     if not matched_statistics:
-        document.add_paragraph("No relevant audience behavior statistics were found for this client profile.")
+        document.add_paragraph("No relevant traveler data points were found for this profile.")
     else:
-        for index, statistic in enumerate(matched_statistics[:6], start=1):
+        for index, statistic in enumerate(matched_statistics[:12], start=1):
             source = statistic.get("source", {}) or {}
-            behavior_type = _docx_text(statistic.get("behavior_type", "Audience Behavior"))
-
+            behavior_type = _docx_text(statistic.get("behavior_type", "Traveler Behavior"))
             document.add_heading(f"{index}. {behavior_type}", level=2)
-            _docx_add_bullet(document, _docx_text(statistic.get("stat", "")), "Statistic: ")
-            if statistic.get("client_implication"):
-                _docx_add_bullet(document, _docx_client_friendly_text(statistic.get("client_implication", "")), "Strategic implication: ")
-            elif statistic.get("what_this_shows"):
+            _docx_add_bullet(document, _docx_text(statistic.get("stat", "")), "Data point: ")
+            if statistic.get("what_this_shows"):
                 _docx_add_bullet(document, _docx_text(statistic.get("what_this_shows", "")), "What this shows: ")
-            add_source_line(source)
+            if statistic.get("why_it_matches"):
+                _docx_add_bullet(document, _docx_text(statistic.get("why_it_matches", "")), "Why it matches: ")
+            if statistic.get("evidence"):
+                _docx_add_bullet(document, _docx_text(statistic.get("evidence", "")), "Evidence: ")
+            add_source_line(document, source)
 
-    # ------------------------------------------------------------------
-    # Recommended Actions
-    # ------------------------------------------------------------------
-    document.add_heading("2. Recommended Actions", level=1)
-    add_section_intro(
-        "Actions are grouped by team/use case so the report can be turned into next steps more easily."
-    )
+    document.add_heading("2. Related Research", level=1)
+    add_section_intro(document, "Research blocks that support the matched data points and can be used for pre-sales, proposals or partner support.")
 
-    action_sections = [
-        ("Social Media", action_recommendations.get("social_media_actions", [])),
-        ("Web Development", action_recommendations.get("web_development_actions", [])),
-        ("Digital Marketing", action_recommendations.get("digital_marketing_actions", [])),
-    ]
+    if not matches:
+        document.add_paragraph("No related research context was found.")
+    else:
+        for index, match in enumerate(matches[:8], start=1):
+            source = match.get("source", {}) or {}
+            document.add_heading(f"{index}. {_docx_text(match.get('research_title', ''))}", level=2)
+            if match.get("key_finding"):
+                _docx_add_bullet(document, _docx_text(match.get("key_finding", "")), "Key finding: ")
+            if match.get("why_it_matches"):
+                _docx_add_bullet(document, _docx_text(match.get("why_it_matches", "")), "Why it matches: ")
+            if match.get("evidence"):
+                _docx_add_bullet(document, _docx_text(match.get("evidence", "")), "Evidence: ")
+            add_source_line(document, source)
 
-    for section_title, actions in action_sections:
-        document.add_heading(section_title, level=2)
-        if actions:
-            for action in actions[:5]:
-                _docx_add_bullet(document, _docx_text(action))
-        else:
-            document.add_paragraph("No recommended actions were generated for this category.")
-
-    # ------------------------------------------------------------------
-    # Evidence-backed Action Cards
-    # ------------------------------------------------------------------
-    if action_cards:
-        document.add_heading("3. Evidence-backed Action Cards", level=1)
-        add_section_intro(
-            "Each card links a recommended action with a research-backed reason and source."
-        )
-        for index, card in enumerate(action_cards[:6], start=1):
-            source = card.get("source", {}) or {}
-            title_text = _docx_text(card.get("title", "")) or _docx_text(card.get("action", "")) or f"Action {index}"
-            document.add_heading(f"{index}. {title_text}", level=2)
-            if card.get("action"):
-                _docx_add_bullet(document, _docx_text(card.get("action", "")), "Action: ")
-            if card.get("why"):
-                _docx_add_bullet(document, _docx_text(card.get("why", "")), "Why: ")
-            elif card.get("rationale"):
-                _docx_add_bullet(document, _docx_text(card.get("rationale", "")), "Why: ")
-            if card.get("supporting_statistic"):
-                _docx_add_bullet(document, _docx_text(card.get("supporting_statistic", "")), "Supporting statistic: ")
-            if source:
-                add_source_line(source)
-
-    # ------------------------------------------------------------------
-    # 30/60/90 Plan
-    # ------------------------------------------------------------------
-    document.add_heading("4. 30/60/90 Day Action Plan", level=1)
-    add_section_intro(
-        "A simple prioritised plan that can be refined by the team before being shared with the client."
-    )
-
-    fallback_plan = {
-        "30_days": top_actions(limit=3),
-        "60_days": action_recommendations.get("digital_marketing_actions", [])[:3],
-        "90_days": action_recommendations.get("social_media_actions", [])[:3],
-    }
-    plan_source = plan_30_60_90 or fallback_plan
-
-    for title_text, key in [("30 days", "30_days"), ("60 days", "60_days"), ("90 days", "90_days")]:
-        document.add_heading(title_text, level=2)
-        actions = plan_source.get(key, []) or []
-        if actions:
-            for action in actions[:5]:
-                _docx_add_bullet(document, _docx_text(action))
-        else:
-            document.add_paragraph("No actions generated for this period.")
-
-    # ------------------------------------------------------------------
-    # Content Angles
-    # ------------------------------------------------------------------
-    if content_angles:
-        document.add_heading("5. Suggested Content Angles", level=1)
-        add_section_intro(
-            "Content angles translate the research findings into practical topics for social, website, PR or campaign use."
-        )
-        for index, angle in enumerate(content_angles[:8], start=1):
-            document.add_heading(f"{index}. {_docx_text(angle.get('angle', angle.get('title', 'Content angle')))}", level=2)
-            if angle.get("rationale"):
-                _docx_add_bullet(document, _docx_text(angle.get("rationale", "")), "Rationale: ")
-            if angle.get("format"):
-                _docx_add_bullet(document, _docx_text(angle.get("format", "")), "Suggested format: ")
-            if angle.get("supporting_statistic"):
-                _docx_add_bullet(document, _docx_text(angle.get("supporting_statistic", "")), "Supporting statistic: ")
-            source = angle.get("source", {}) or {}
-            if source:
-                add_source_line(source)
-
-    # ------------------------------------------------------------------
-    # Best Matching Audience Segments
-    # ------------------------------------------------------------------
-    if audience_segments:
-        document.add_heading("6. Best Matching Audience Segments", level=1)
-        add_section_intro(
-            "Audience segments are grouped by the research signals that support them for this client profile."
-        )
-        table = document.add_table(rows=1, cols=3)
-        table.style = "Light Shading Accent 1"
-        table.alignment = WD_TABLE_ALIGNMENT.LEFT
-        hdr = table.rows[0].cells
-        hdr[0].text = "Audience segment"
-        hdr[1].text = "Matched signals"
-        hdr[2].text = "Why it matters"
-        for cell in hdr:
-            for paragraph in cell.paragraphs:
-                for run in paragraph.runs:
-                    run.bold = True
-        for segment in audience_segments[:8]:
-            cells = table.add_row().cells
-            cells[0].text = _docx_text(segment.get("audience_segment", ""))
-            cells[1].text = str(segment.get("matched_count", segment.get("score", "")) or "—")
-            cells[2].text = _docx_text(segment.get("reason", segment.get("why_it_matters", ""))) or "—"
-        document.add_paragraph("")
-
-    # ------------------------------------------------------------------
-    # Supporting Sources
-    # ------------------------------------------------------------------
-    document.add_heading("7. Supporting Sources", level=1)
-    add_section_intro(
-        "Compact source list for quick review. Full evidence is included in the appendix."
-    )
-
+    document.add_heading("3. Source List", level=1)
     source_rows = []
     seen_sources = set()
-    for statistic in matched_statistics[:10]:
+    for statistic in matched_statistics[:12]:
         source = statistic.get("source", {}) or {}
-        key = (source.get("source_name", ""), source.get("source_report", ""), source.get("source_year", ""))
+        key = source_inline(source)
         if key not in seen_sources:
             seen_sources.add(key)
-            source_rows.append(source_inline(source))
+            source_rows.append(key)
     for match in matches[:8]:
         source = match.get("source", {}) or {}
-        key = (source.get("source_name", ""), source.get("source_report", ""), source.get("source_year", ""))
+        key = source_inline(source)
         if key not in seen_sources:
             seen_sources.add(key)
-            source_rows.append(source_inline(source))
+            source_rows.append(key)
 
     if source_rows:
         table = document.add_table(rows=1, cols=1)
         table.style = "Table Grid"
         hdr = table.rows[0].cells
         hdr[0].text = "Source / report"
-        for cell in hdr:
-            set_cell_shading(cell, TOURIX_LIGHT_RED_HEX)
-            set_cell_border(cell)
-            for paragraph in cell.paragraphs:
-                for run in paragraph.runs:
-                    run.bold = True
-                    run.font.color.rgb = TOURIX_DARK_RED
+        set_cell_shading(hdr[0], TOURIX_LIGHT_RED_HEX)
+        set_cell_border(hdr[0])
+        for paragraph in hdr[0].paragraphs:
+            for run in paragraph.runs:
+                run.bold = True
+                run.font.color.rgb = TOURIX_DARK_RED
         for row_index, source_text in enumerate(source_rows):
             cells = table.add_row().cells
             cells[0].text = source_text
-            fill = TOURIX_SOFT_RED_HEX if row_index % 2 == 0 else "FFFFFF"
-            for cell in cells:
-                set_cell_shading(cell, fill)
-                set_cell_border(cell)
+            set_cell_shading(cells[0], TOURIX_SOFT_RED_HEX if row_index % 2 == 0 else "FFFFFF")
+            set_cell_border(cells[0])
     else:
         document.add_paragraph("No supporting sources found.")
-
-    # ------------------------------------------------------------------
-    # Appendix
-    # ------------------------------------------------------------------
-    document.add_heading("Appendix — Detailed Evidence", level=1)
-    add_section_intro(
-        "Detailed evidence and matching rationale for internal review. This section can be shortened before client-facing delivery."
-    )
-
-    if not matched_statistics:
-        document.add_paragraph("No evidence available.")
-    else:
-        for index, statistic in enumerate(matched_statistics[:8], start=1):
-            source = statistic.get("source", {}) or {}
-            document.add_heading(f"{index}. {_docx_text(statistic.get('behavior_type', 'Audience Behavior'))}", level=2)
-            _docx_add_bullet(document, _docx_text(statistic.get("stat", "")), "Statistic: ")
-            if statistic.get("what_this_shows"):
-                _docx_add_bullet(document, _docx_text(statistic.get("what_this_shows", "")), "What this shows: ")
-            if statistic.get("why_it_matches"):
-                _docx_add_bullet(document, _docx_text(statistic.get("why_it_matches", "")), "Why selected: ")
-            if statistic.get("evidence"):
-                _docx_add_bullet(document, _docx_text(statistic.get("evidence", "")), "Evidence: ")
-            add_source_line(source)
 
     buffer = BytesIO()
     document.save(buffer)
@@ -1877,9 +1302,9 @@ def build_audience_intelligence_docx(
     return buffer.getvalue()
 
 def render_client_insights_generator():
-    st.header("Client Audience Intelligence")
+    st.header("Client Research Data Points")
     st.caption(
-        "Interactive workspace for client-specific audience statistics, actions, content angles, sources and report exports."
+        "Simple workspace for matching a client or partner profile with traveler data points and related research sources."
     )
 
     st.markdown(
@@ -2256,31 +1681,19 @@ def render_client_insights_generator():
         with st.expander("Open full client profile JSON"):
             st.json(client_profile)
 
-        if st.button("✨ Generate audience intelligence", use_container_width=True, type="primary"):
+        if st.button("✨ Generate traveler data points", use_container_width=True, type="primary"):
             try:
                 research_blocks = load_research_blocks()
                 matches = match_research_to_client(client_profile, research_blocks)
                 matched_statistics = match_statistics_to_client(client_profile, research_blocks)
-                action_recommendations = generate_action_recommendations(client_profile)
-                action_cards = generate_evidence_backed_action_cards(
-                    client_profile,
-                    matched_statistics,
-                    action_recommendations,
-                )
+                action_recommendations = {}
+                action_cards = []
                 audience_segments = analyze_best_matching_audience_segments(
                     client_profile,
                     matched_statistics,
                 )
-                content_angles = generate_content_angles(
-                    client_profile,
-                    matched_statistics,
-                    matches,
-                )
-                plan_30_60_90 = generate_30_60_90_day_plan(
-                    client_profile,
-                    action_recommendations,
-                    matched_statistics,
-                )
+                content_angles = []
+                plan_30_60_90 = {}
 
                 st.session_state["client_insight_matches"] = matches
                 st.session_state["client_matched_statistics"] = matched_statistics
@@ -2307,7 +1720,7 @@ def render_client_insights_generator():
 
     if not (matches or matched_statistics):
         if "client_profile" in st.session_state:
-            st.info("Click Generate audience intelligence to create the interactive insight board.")
+            st.info("Click Generate traveler data points to create the research matcher output.")
         return
 
     def _build_source_rows() -> List[Dict[str, str]]:
@@ -2333,25 +1746,22 @@ def render_client_insights_generator():
     strongest_segment = audience_segments[0].get("audience_segment", "—") if audience_segments else "—"
 
     st.divider()
-    st.markdown("## Audience intelligence overview")
-    metric_cols = st.columns(4)
+    st.markdown("## Research data points overview")
+    source_count = len(_build_source_rows())
+    metric_cols = st.columns(3)
     with metric_cols[0]:
-        _metric_card(len(matched_statistics), "Audience statistics", "Matched to this client profile")
+        _metric_card(len(matched_statistics), "Traveler data points", "Matched to this client / partner profile")
     with metric_cols[1]:
         _metric_card(len(planning_statistics), "Planning / booking signals", "Decision journey evidence")
     with metric_cols[2]:
-        _metric_card(action_count, "Recommended actions", "Social, web and digital")
-    with metric_cols[3]:
-        _metric_card(f"{top_stat_score}/100", "Top relevance score", "Strongest statistic match")
+        _metric_card(source_count, "Related research sources", "Reports used in this output")
 
     section_options = [
         "🏠 Overview",
         "📊 Statistics",
         "🧭 Journey",
-        "✅ Actions",
         "👥 Audiences",
-        "💡 Content",
-        "📅 Plan",
+        "📚 Sources",
         "📤 Export",
     ]
     default_section = st.session_state.get("cai_section", "🏠 Overview")
@@ -2376,44 +1786,29 @@ def render_client_insights_generator():
             for index, statistic in enumerate(matched_statistics[:3], start=1):
                 _render_stat_card(statistic, index, expanded=False)
         with right:
-            st.markdown("#### Quick strategy focus")
+            st.markdown("#### Quick research focus")
+            if matched_statistics:
+                top_source = matched_statistics[0].get("source", {}) or {}
+                st.markdown(
+                    f"""
+                    <div class="cai-card cai-card-blue">
+                        <div class="cai-mini-title">Strongest matched source</div>
+                        <div class="cai-main-text">{_source_label(top_source)}</div>
+                        <div class="cai-muted">Use this as the first research reference for pre-sales, proposal or partner support.</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
             st.markdown(
                 f"""
-                <div class="cai-card cai-card-blue">
-                    <div class="cai-mini-title">Strongest audience segment</div>
+                <div class="cai-card cai-card-green">
+                    <div class="cai-mini-title">Strongest traveler segment</div>
                     <div class="cai-main-text">{strongest_segment}</div>
-                    <div class="cai-muted">Based on matched audience statistics and relevance scores.</div>
+                    <div class="cai-muted">Based on the matched traveler data points and research tags.</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
-            if action_cards:
-                first_card = action_cards[0]
-                st.markdown(
-                    f"""
-                    <div class="cai-card cai-card-green">
-                        <span class="cai-pill cai-pill-purple">{first_card.get('category', 'Action')}</span>
-                        <span class="cai-pill cai-pill-orange">{first_card.get('priority', 'Medium')}</span>
-                        <div class="cai-mini-title">Recommended next action</div>
-                        <div class="cai-main-text">{first_card.get('action', '')}</div>
-                        <div class="cai-muted">{_short(first_card.get('why_it_matters', ''), 220)}</div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-            if content_angles:
-                angle = content_angles[0]
-                st.markdown("#### Suggested content angle")
-                st.markdown(
-                    f"""
-                    <div class="cai-card cai-card-amber">
-                        <span class="cai-pill cai-pill-green">{angle.get('format', 'Content idea')}</span>
-                        <div class="cai-main-text">{angle.get('angle', angle.get('title', ''))}</div>
-                        <div class="cai-muted">{_short(angle.get('rationale', ''), 220)}</div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
 
     elif section == "📊 Statistics":
         st.markdown("### Key audience behavior statistics")
@@ -2462,7 +1857,7 @@ def render_client_insights_generator():
                     _source_box(source)
 
     elif section == "🧭 Journey":
-        st.markdown("### Customer journey signals")
+        st.markdown("### Journey-related traveler signals")
         journey_stage = st.radio(
             "Journey stage",
             ["Inspiration", "Planning", "Booking", "Post-experience"],
@@ -2472,85 +1867,19 @@ def render_client_insights_generator():
 
         if journey_stage == "Inspiration":
             relevant_stats = [s for s in matched_statistics if "Inspiration" in s.get("behavior_type", "") or "Social" in s.get("behavior_type", "")]
-            relevant_actions = action_recommendations.get("social_media_actions", [])
         elif journey_stage == "Planning":
             relevant_stats = [s for s in matched_statistics if "Planning" in s.get("behavior_type", "")]
-            relevant_actions = action_recommendations.get("web_development_actions", [])[:3]
         elif journey_stage == "Booking":
             relevant_stats = [s for s in matched_statistics if "Booking" in s.get("behavior_type", "")]
-            relevant_actions = action_recommendations.get("web_development_actions", []) + action_recommendations.get("digital_marketing_actions", [])[:2]
         else:
             relevant_stats = [s for s in matched_statistics if "Trust" in s.get("behavior_type", "") or "Value" in s.get("behavior_type", "")]
-            relevant_actions = ["Δημιουργία review request flow μετά την εμπειρία.", "Αξιοποίηση UGC και testimonials σε website/social."]
 
-        left, right = st.columns([1.2, 1])
-        with left:
-            st.markdown(f"#### Relevant signals for {journey_stage}")
-            if relevant_stats:
-                for idx, statistic in enumerate(relevant_stats[:4], start=1):
-                    _render_stat_card(statistic, idx, expanded=False)
-            else:
-                st.info("No specific statistics found for this stage.")
-        with right:
-            st.markdown("#### Actions for this stage")
-            for idx, action in enumerate(relevant_actions[:6], start=1):
-                st.checkbox(action, key=f"journey_action_{journey_stage}_{idx}")
-
-    elif section == "✅ Actions":
-        st.markdown("### Action board")
-        mode = st.radio("View", ["Checklist", "Evidence-backed cards"], horizontal=True, label_visibility="collapsed")
-        if mode == "Checklist":
-            col1, col2, col3 = st.columns(3)
-            action_groups = [
-                (col1, "Social Media", "social_media_actions", "cai-card-purple"),
-                (col2, "Web Development", "web_development_actions", "cai-card-blue"),
-                (col3, "Digital Marketing", "digital_marketing_actions", "cai-card-green"),
-            ]
-            for col, title, key, card_class in action_groups:
-                with col:
-                    st.markdown(f"#### {title}")
-                    actions = action_recommendations.get(key, []) or []
-                    if actions:
-                        for idx, action in enumerate(actions, start=1):
-                            st.checkbox(action, key=f"action_check_{key}_{idx}")
-                    else:
-                        st.info("No actions generated.")
+        st.markdown(f"#### Relevant traveler data points for {journey_stage}")
+        if relevant_stats:
+            for idx, statistic in enumerate(relevant_stats[:6], start=1):
+                _render_stat_card(statistic, idx, expanded=False)
         else:
-            if action_cards:
-                labels = [f"{idx}. {card.get('category', 'Action')} · {card.get('priority', 'Medium')}" for idx, card in enumerate(action_cards[:10], start=1)]
-                selected_action_label = st.selectbox("Choose action card", labels, label_visibility="collapsed")
-                selected_card = action_cards[labels.index(selected_action_label)]
-                st.markdown(
-                    f"""
-                    <div class="cai-card cai-card-blue">
-                        <span class="cai-pill cai-pill-purple">{selected_card.get('category', 'Action')}</span>
-                        <span class="cai-pill cai-pill-orange">{selected_card.get('priority', 'Medium')}</span>
-                        <div class="cai-main-text">{selected_card.get('action', '')}</div>
-                        <div class="cai-mini-title">Why it matters</div>
-                        <div class="cai-muted">{selected_card.get('why_it_matters', '')}</div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-                _research_source_popover(
-                    title="Action card: source research",
-                    source=selected_card.get("source", {}) or {},
-                    supporting_text=str(selected_card.get("supporting_statistic", "")),
-                    evidence=str(selected_card.get("why_it_matters", "")),
-                )
-                st.markdown("#### Other action cards")
-                for idx, card in enumerate(action_cards[:8], start=1):
-                    with st.expander(f"{idx}. {card.get('action', '')}"):
-                        st.write(card.get("why_it_matters", ""))
-                        st.write(card.get("supporting_statistic", ""))
-                        _research_source_popover(
-                            title="Action card: source research",
-                            source=card.get("source", {}) or {},
-                            supporting_text=str(card.get("supporting_statistic", "")),
-                            evidence=str(card.get("why_it_matters", "")),
-                        )
-            else:
-                st.info("No evidence-backed action cards were generated.")
+            st.info("No specific traveler data points found for this stage.")
 
     elif section == "👥 Audiences":
         st.markdown("### Audience explorer")
@@ -2580,52 +1909,28 @@ def render_client_insights_generator():
         else:
             st.info("No audience segments were generated.")
 
-    elif section == "💡 Content":
-        st.markdown("### Content angle explorer")
-        if content_angles:
-            labels = [f"{idx}. {angle.get('angle', angle.get('title', ''))}" for idx, angle in enumerate(content_angles[:10], start=1)]
-            selected_angle_label = st.selectbox("Choose content angle", labels, label_visibility="collapsed")
-            angle = content_angles[labels.index(selected_angle_label)]
-            st.markdown(
-                f"""
-                <div class="cai-card cai-card-amber">
-                    <span class="cai-pill cai-pill-green">{angle.get('format', 'Content idea')}</span>
-                    <div class="cai-main-text">{angle.get('angle', angle.get('title', ''))}</div>
-                    <div class="cai-mini-title">Rationale</div>
-                    <div class="cai-muted">{angle.get('rationale', '')}</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-            _research_source_popover(
-                title="Content angle: source research",
-                source=angle.get("source", {}) or {},
-                supporting_text=str(angle.get("supporting_statistic", "")),
-                evidence=str(angle.get("why_it_works", angle.get("rationale", ""))),
-            )
-            st.markdown("#### Other content ideas")
-            for idx, other in enumerate(content_angles[:8], start=1):
-                st.markdown(f"- **{idx}. {other.get('angle', other.get('title', ''))}** — {other.get('format', '')}")
+    elif section == "📚 Sources":
+        st.markdown("### Related research sources")
+        source_rows = _build_source_rows()
+        if source_rows:
+            st.dataframe(pd.DataFrame(source_rows), width="stretch", hide_index=True)
         else:
-            st.info("No content angles were generated.")
+            st.info("No related sources found.")
 
-    elif section == "📅 Plan":
-        st.markdown("### 30/60/90 day action plan")
-        plan_cols = st.columns(3)
-        plan_data = [
-            (plan_cols[0], "30 days", "30_days", "cai-card-green"),
-            (plan_cols[1], "60 days", "60_days", "cai-card-blue"),
-            (plan_cols[2], "90 days", "90_days", "cai-card-purple"),
-        ]
-        for col, title, key, card_class in plan_data:
-            with col:
-                st.markdown(f"#### {title}")
-                actions = plan_30_60_90.get(key, []) or []
-                if actions:
-                    for idx, action in enumerate(actions[:6], start=1):
-                        st.checkbox(action, key=f"plan_{key}_{idx}")
-                else:
-                    st.info("No actions generated.")
+        st.markdown("### Related research context")
+        if matches:
+            for index, match in enumerate(matches[:8], start=1):
+                source = match.get("source", {}) or {}
+                with st.expander(f"{index}. {match.get('research_title', '')}"):
+                    st.markdown("**Why it matches**")
+                    st.write(match.get("why_it_matches", ""))
+                    st.markdown("**Key finding**")
+                    st.write(match.get("key_finding", ""))
+                    st.markdown("**Evidence**")
+                    st.write(match.get("evidence", ""))
+                    _source_box(source)
+        else:
+            st.info("No related research context found.")
 
     elif section == "📤 Export":
         st.markdown("### Export reports and data")
@@ -2700,18 +2005,14 @@ def render_client_insights_generator():
 
         enhanced_output = {
             "client_profile": client_profile,
-            "audience_statistics": matched_statistics[:10],
-            "supporting_context": matches[:10],
-            "action_recommendations": action_recommendations,
-            "evidence_backed_action_cards": action_cards,
+            "traveler_data_points": matched_statistics[:12],
+            "related_research_context": matches[:10],
             "audience_segments": audience_segments,
-            "content_angles": content_angles,
-            "plan_30_60_90": plan_30_60_90,
         }
         st.download_button(
-            "Download enhanced strategy JSON",
+            "Download research data points JSON",
             data=json.dumps(enhanced_output, ensure_ascii=False, indent=2).encode("utf-8"),
-            file_name="client_audience_intelligence_enhanced.json",
+            file_name="client_research_data_points.json",
             mime="application/json",
             use_container_width=True,
         )
@@ -2743,7 +2044,7 @@ def main():
 
     extractor_tab, insights_tab = st.tabs([
         "Research Extractor",
-        "Client Audience Intelligence",
+        "Client Research Matcher",
     ])
 
     with extractor_tab:

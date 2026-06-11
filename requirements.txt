@@ -6,3 +6,5 @@ beautifulsoup4>=4.12
 lxml>=5.2
 openai>=1.35
 python-dotenv>=1.0
+reportlab
+python-docx
